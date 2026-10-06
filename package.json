@@ -32,11 +32,11 @@
     "game",
     "arrow"
   ],
-  "author": "Arif Sevban",
+  "author": "Arif S.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arifsevban/arrow-puck.git"
+    "url": "https://github.com/arifsevban/arrowpuck.git"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",

@@ -1,25 +1,23 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ArrowShot - Non-intrusive Interactive Easter Egg Widget</title>
+  <title>ArrowPuck Live Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #09090b;
       --card-bg: #111114;
-      --card-border: #27272a;
-      --card-hover-border: #3f3f46;
-      --text-main: #f4f4f5;
+      --border: #27272a;
+      --border-hover: #3f3f46;
+      --text: #f4f4f5;
       --text-muted: #a1a1aa;
       --text-dim: #71717a;
       --accent: #f59e0b;
-      --accent-muted: rgba(245, 158, 11, 0.12);
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     * {
@@ -30,24 +28,11 @@
 
     body {
       background-color: var(--bg);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      min-height: 100vh;
-      line-height: 1.6;
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.65;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
-      position: relative;
-    }
-
-    /* Subtle background dot grid */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-      background-size: 32px 32px;
-      pointer-events: none;
-      z-index: 0;
     }
 
     /* Top Navigation */
@@ -58,338 +43,285 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1.25rem 3rem;
-      border-bottom: 1px solid var(--card-border);
+      padding: 1.5rem 3.5rem;
+      border-bottom: 1px solid var(--border);
       backdrop-filter: blur(12px);
       background-color: rgba(9, 9, 11, 0.85);
     }
 
     .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-weight: 700;
-      font-size: 1.05rem;
-      letter-spacing: -0.02em;
-    }
-
-    .brand-icon {
-      width: 24px;
-      height: 24px;
-      border: 1.5px solid var(--accent);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .brand-icon::after {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background-color: var(--accent);
-      border-radius: 50%;
-    }
-
-    .nav-stats {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .score-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.6rem;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      padding: 0.35rem 0.9rem;
-      border-radius: 9999px;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-
-    .score-badge .score-val {
-      font-family: var(--font-mono);
+      font-size: 1rem;
       font-weight: 600;
-      color: var(--accent);
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-decoration: none;
     }
 
-    .header-btn {
-      background: transparent;
-      border: 1px solid var(--card-border);
+    .brand span {
+      color: var(--text-dim);
+      font-weight: 400;
+      margin-left: 0.35rem;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    nav a {
       color: var(--text-muted);
-      padding: 0.35rem 0.8rem;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    .contact-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 1rem;
       border-radius: 6px;
       font-size: 0.82rem;
+      font-weight: 500;
       cursor: pointer;
-      font-family: var(--font-sans);
+      font-family: var(--font);
       transition: all 0.15s ease;
     }
 
-    .header-btn:hover {
-      color: var(--text-main);
+    .contact-btn:hover {
       border-color: var(--text-dim);
+      background: #18181b;
     }
 
     /* Main Container */
     main {
-      position: relative;
-      z-index: 10;
-      max-width: 1040px;
+      max-width: 860px;
       margin: 0 auto;
-      padding: 4.5rem 2rem 8rem;
+      padding: 5rem 2rem 10rem;
     }
 
-    /* Hero Section */
+    /* Intro Hero */
     .hero {
-      text-align: center;
-      max-width: 760px;
-      margin: 0 auto 5rem;
+      margin-bottom: 5.5rem;
     }
 
-    .tag-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
+    .hero-label {
       font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 1.25rem;
       font-weight: 500;
-      color: var(--accent);
-      background: var(--accent-muted);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      margin-bottom: 1.5rem;
-      letter-spacing: 0.02em;
     }
 
     h1 {
-      font-size: 3.25rem;
+      font-size: 2.75rem;
       font-weight: 700;
       letter-spacing: -0.04em;
-      line-height: 1.15;
-      margin-bottom: 1.25rem;
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
     }
 
-    .subtitle {
+    .lead {
       font-size: 1.15rem;
       color: var(--text-muted);
-      max-width: 620px;
-      margin: 0 auto 2.25rem;
-      font-weight: 400;
+      line-height: 1.7;
+      max-width: 720px;
+      margin-bottom: 2.25rem;
     }
 
     .hero-actions {
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 1rem;
     }
 
-    .btn-primary {
-      background: var(--text-main);
+    .btn-main {
+      background: var(--text);
       color: var(--bg);
       border: none;
-      padding: 0.75rem 1.6rem;
+      padding: 0.7rem 1.4rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
       font-weight: 600;
-      font-size: 0.92rem;
-      border-radius: 8px;
       cursor: pointer;
-      transition: opacity 0.15s ease, transform 0.1s ease;
+      transition: opacity 0.15s ease;
     }
 
-    .btn-primary:hover {
-      opacity: 0.92;
-      transform: translateY(-1px);
+    .btn-main:hover {
+      opacity: 0.9;
     }
 
-    .btn-secondary {
-      background: var(--card-bg);
-      color: var(--text-main);
-      border: 1px solid var(--card-border);
-      padding: 0.75rem 1.5rem;
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.7rem 1.4rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
       font-weight: 500;
-      font-size: 0.92rem;
-      border-radius: 8px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .btn-secondary:hover {
+    .btn-outline:hover {
       border-color: var(--text-dim);
       background: #18181b;
     }
 
-    /* Cards Grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 4rem;
+    /* Section Styling */
+    section {
+      margin-bottom: 5rem;
     }
 
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1.75rem;
-      transition: border-color 0.2s ease, transform 0.2s ease;
-    }
-
-    .card:hover {
-      border-color: var(--card-hover-border);
-      transform: translateY(-2px);
-    }
-
-    .card-meta {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      color: var(--text-dim);
-      margin-bottom: 0.75rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .card h3 {
-      font-size: 1.15rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.6rem;
-    }
-
-    .card p {
-      font-size: 0.88rem;
-      color: var(--text-muted);
-      line-height: 1.55;
-      margin-bottom: 1.25rem;
-    }
-
-    .card-action-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
+    .section-title {
       font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--text-main);
-      background: transparent;
-      border: 1px solid var(--card-border);
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 1.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
 
-    .card-action-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
-    /* Code Snippet Box */
-    .snippet-box {
+    /* Selected Works */
+    .works-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .work-item {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 4rem;
-    }
-
-    .snippet-header {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.75rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--card-border);
-    }
-
-    .snippet-title {
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .copy-btn {
-      background: transparent;
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 4px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s ease;
       cursor: pointer;
-      font-family: var(--font-sans);
     }
 
-    .copy-btn:hover {
-      color: var(--text-main);
-      border-color: var(--text-dim);
+    .work-item:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
     }
 
-    pre code {
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: #e4e4e7;
-      display: block;
+    .work-info h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.01em;
+    }
+
+    .work-info p {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    .work-tag {
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      background: #18181b;
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.65rem;
+      border-radius: 4px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* Writing / Notes */
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .note-entry {
+      border-bottom: 1px solid rgba(39, 39, 42, 0.6);
+      padding-bottom: 1.5rem;
+    }
+
+    .note-entry:last-child {
+      border-bottom: none;
+    }
+
+    .note-date {
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      margin-bottom: 0.35rem;
+    }
+
+    .note-entry h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .note-entry p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
       line-height: 1.6;
     }
 
-    .code-comment { color: var(--text-dim); }
-    .code-keyword { color: #f472b6; }
-    .code-fn { color: #60a5fa; }
-    .code-string { color: #34d399; }
-
-    /* Launcher Hint in Bottom-Left */
-    .launcher-hint {
-      position: fixed;
-      left: 120px;
-      bottom: 84px;
-      z-index: 50;
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 3.5rem;
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      background: rgba(17, 17, 20, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--card-border);
-      padding: 0.4rem 0.8rem;
-      border-radius: 9999px;
-      pointer-events: none;
-      transition: opacity 0.5s ease;
+      justify-content: space-between;
+      color: var(--text-dim);
+      font-size: 0.82rem;
     }
 
-    .launcher-hint-arrow {
-      color: var(--accent);
-      font-size: 0.95rem;
-    }
-
-    /* Target Hint in Top-Right */
-    .target-hint {
+    /* Discreet Hint */
+    .easter-egg-hint {
       position: fixed;
-      right: 130px;
-      top: 92px;
+      left: 110px;
+      bottom: 74px;
       z-index: 50;
       display: flex;
       align-items: center;
       gap: 0.5rem;
       font-size: 0.78rem;
-      font-weight: 500;
       color: var(--text-dim);
-      background: rgba(17, 17, 20, 0.85);
+      background: rgba(17, 17, 20, 0.8);
       backdrop-filter: blur(8px);
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border);
       padding: 0.35rem 0.75rem;
       border-radius: 9999px;
       pointer-events: none;
+      transition: opacity 0.5s ease;
     }
 
-    /* Click Test Toast */
-    #test-toast {
+    /* Feedback Toast */
+    #page-toast {
       position: fixed;
       bottom: 2rem;
       right: 2rem;
       background: #18181b;
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border);
+      color: var(--text);
       padding: 0.75rem 1.25rem;
       border-radius: 8px;
       font-size: 0.85rem;
@@ -398,214 +330,150 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
 
-    @media (max-width: 860px) {
-      .grid { grid-template-columns: 1fr; }
-      h1 { font-size: 2.25rem; }
-      header { padding: 1rem 1.5rem; }
-      .launcher-hint { display: none; }
-      .target-hint { display: none; }
+    @media (max-width: 768px) {
+      header { padding: 1.25rem 1.5rem; }
+      nav { display: none; }
+      main { padding: 3.5rem 1.5rem 8rem; }
+      h1 { font-size: 2.15rem; }
+      footer { padding: 2rem 1.5rem; flex-direction: column; gap: 1rem; }
+      .easter-egg-hint { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Navigation Header with Live Scoreboard -->
+  <!-- Navigation -->
   <header>
-    <div class="brand">
-      <div class="brand-icon"></div>
-      <span>ArrowShot</span>
-    </div>
-
-    <div class="nav-stats">
-      <div class="score-badge">
-        <span>Skor:</span>
-        <span class="score-val" id="score-counter">0</span>
-      </div>
-      <div class="score-badge">
-        <span>İsabet:</span>
-        <span class="score-val" id="accuracy-counter">0%</span>
-      </div>
-      <button class="header-btn" id="sound-toggle" title="Sesi Aç/Kapat">Ses: Kapalı</button>
-      <button class="header-btn" id="reset-btn">Sıfırla</button>
-    </div>
+    <a href="#" class="brand">ArrowPuck Live Demo</a>
+    <nav>
+      <a href="#works">Selected Works</a>
+      <a href="#notes">Notes</a>
+      <a href="#about">About</a>
+      <button class="contact-btn" onclick="showFeedback('Contact button clicked! Pass-through confirmed.')">Get in Touch</button>
+    </nav>
   </header>
 
-  <!-- Main Website Content (To demonstrate 100% non-intrusive pointer pass-through) -->
-  <main id="main-site-content">
+  <!-- Content -->
+  <main>
     <section class="hero">
-      <div class="tag-pill">
-        <span>●</span> GDD v1.0.0 Mimarisi Hazır
-      </div>
-      <h1>Web Siteleri İçin Hafif, Zarif Mikro Oyunlaşma</h1>
-      <p class="subtitle">
-        Harici kütüphane gerektirmeyen, sayfa akışını ve tıklamaları asla engellemeyen 
-        saf HTML5 Canvas + ES6 fizik motoru. Sol alttaki sapanı geriye çekerek oku fırlatın!
+      <div class="hero-label">Design &amp; Engineering</div>
+      <h1>Crafting digital tools, thoughtful interfaces, and tactile web experiences.</h1>
+      <p class="lead">
+        Focused on zero-dependency architecture, high-performance canvas systems, 
+        and micro-interactions that feel responsive, physical, and respectful of the user.
       </p>
       <div class="hero-actions">
-        <button class="btn-primary" id="btn-hero-action">İnteraktif Test Et</button>
-        <button class="btn-secondary" id="btn-hero-select">Metni Seç & Kopyala</button>
+        <button class="btn-main" onclick="showFeedback('Primary CTA clicked. All page controls function smoothly.')">View Selected Works</button>
+        <button class="btn-outline" onclick="showFeedback('Secondary button clicked. Text can also be selected freely.')">Read Architecture Notes</button>
       </div>
     </section>
 
-    <!-- Interactive Grid Cards (Verifying hover, click & scroll) -->
-    <div class="grid">
-      <div class="card">
-        <div class="card-meta">BÖLÜM 4.2 / EULER</div>
-        <h3>Fiziksel Balistik</h3>
-        <p>Yerçekimi ivmesi (g = 0.42 px/frame²) ve hava direnci (μ = 0.998) ile hesaplanan gerçekçi parabolik ok uçuşu.</p>
-        <button class="card-action-btn" onclick="showToast('Fizik kartı tıklandı! Canvas tıklamayı engellemiyor.')">
-          Kartı Tıkla ↗
-        </button>
-      </div>
+    <!-- Selected Works -->
+    <section id="works">
+      <div class="section-title">Selected Projects</div>
+      <div class="works-list">
+        <div class="work-item" onclick="showFeedback('Opened project: Kinetic Canvas Renderer')">
+          <div class="work-info">
+            <h3>Kinetic Canvas Renderer</h3>
+            <p>Hardware-accelerated 2D ballistic physics engine with zero external libraries.</p>
+          </div>
+          <div class="work-tag">HTML5 Canvas / ES6</div>
+        </div>
 
-      <div class="card">
-        <div class="card-meta">BÖLÜM 4.4 / PREVIEW</div>
-        <h3>Kesikli Yörünge</h3>
-        <p>Sapan gerildiğinde anlık fırlatma hızına göre tam isabetli yörünge eğrisi noktalarla önceden gösterilir.</p>
-        <button class="card-action-btn" onclick="showToast('Yörünge kartı tıklandı! Sayfa içi etkileşim kusursuz.')">
-          Kartı Tıkla ↗
-        </button>
-      </div>
+        <div class="work-item" onclick="showFeedback('Opened project: Design Systems at Scale')">
+          <div class="work-info">
+            <h3>Design Systems at Scale</h3>
+            <p>Monochrome token hierarchies and component libraries for modern developer tooling.</p>
+          </div>
+          <div class="work-tag">UI / Typography</div>
+        </div>
 
-      <div class="card">
-        <div class="card-meta">BÖLÜM 4.5 / RINGS</div>
-        <h3>Halka Puanlama</h3>
-        <p>300 (Tam 12'den), 150 ve 50 puanlık eşmerkezli halkalar. Elastik hedef titreşimi ve minimalist kıvılcımlar.</p>
-        <button class="card-action-btn" onclick="showToast('Hedef kartı tıklandı! Non-intrusive yapı doğrulanıyor.')">
-          Kartı Tıkla ↗
-        </button>
+        <div class="work-item" onclick="showFeedback('Opened project: Non-intrusive Web Easter Eggs')">
+          <div class="work-info">
+            <h3>Non-intrusive Web Easter Eggs</h3>
+            <p>Pass-through gesture tracking and isolated interactive widgets for ambient gamification.</p>
+          </div>
+          <div class="work-tag">Interaction Design</div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Code Snippet Demonstration -->
-    <div class="snippet-box">
-      <div class="snippet-header">
-        <span class="snippet-title">CDN Hızlı Kurulum (&lt;script&gt; Tag)</span>
-        <button class="copy-btn" id="btn-copy-code">Kodu Kopyala</button>
+    <!-- Writing / Notes -->
+    <section id="notes">
+      <div class="section-title">Writing &amp; Thoughts</div>
+      <div class="notes-list">
+        <div class="note-entry">
+          <div class="note-date">October 2026</div>
+          <h4>Why Zero-Dependency Widgets Matter</h4>
+          <p>
+            When embedding interactive elements or Easter eggs onto client websites, importing 400KB game engines
+            creates performance overhead and security liability. Native HTML5 Canvas and Euler integration provide
+            all the kinetic fidelity needed in under 25KB.
+          </p>
+        </div>
+
+        <div class="note-entry">
+          <div class="note-date">September 2026</div>
+          <h4>The Art of Non-Intrusive Canvas Overlays</h4>
+          <p>
+            An interactive layer should never steal user agency. By combining full-screen pointer-events pass-through
+            with local pointer-capture hot zones, interactive widgets can live harmoniously on production sites.
+          </p>
+        </div>
       </div>
-      <pre><code><span class="code-comment">&lt;!-- 1. Standalone Minified Bundle (CDN / UNPKG / JSDelivr) --&gt;</span>
-<span class="code-keyword">&lt;script</span> <span class="code-fn">src</span>=<span class="code-string">"./dist/arrowpuck.min.js"</span><span class="code-keyword">&gt;&lt;/script&gt;</span>
-
-<span class="code-comment">&lt;!-- 2. Doğrudan Başlatma (window.ArrowPuck veya window.ArrowShot) --&gt;</span>
-<span class="code-keyword">&lt;script&gt;</span>
-  <span class="code-keyword">const</span> widget = <span class="code-keyword">new</span> <span class="code-fn">ArrowPuck</span>({
-    bowPosition: <span class="code-string">'bottom-left'</span>,
-    targetPosition: <span class="code-string">'top-right'</span>,
-    gravity: <span class="code-string">0.42</span>,
-    powerMultiplier: <span class="code-string">0.22</span>,
-    onHit: (score, total) =&gt; console.log(<span class="code-string">`Hit: ${score} | Total: ${total}`</span>)
-  });
-<span class="code-keyword">&lt;/script&gt;</span></code></pre>
-    </div>
+    </section>
   </main>
 
-  <!-- Minimalist Visual Cues -->
-  <div class="launcher-hint" id="launcher-hint">
-    <span class="launcher-hint-arrow">←</span>
-    <span>Sapanı geriye doğru çekin & bırakın</span>
+  <!-- Footer -->
+  <footer>
+    <div>Copyright &copy; 2026 Arif S. All rights reserved.</div>
+    <div>MIT Licensed. Clean, zero-dependency engineering.</div>
+  </footer>
+
+  <!-- Subtle Easter Egg Indicator -->
+  <div class="easter-egg-hint" id="hint">
+    <span>← Pull slingshot to aim &amp; release</span>
   </div>
 
-  <div class="target-hint">
-    <span>Hedef Tahtası</span>
-    <span>↗</span>
-  </div>
+  <div id="page-toast"></div>
 
-  <div id="test-toast"></div>
-
-  <!-- ArrowPuck Standalone UMD / Minified Bundle (Simulating CDN: https://cdn.jsdelivr.net/npm/arrow-puck/dist/arrowpuck.min.js) -->
+  <!-- ArrowPuck Standalone Bundle (CDN Simulation) -->
   <script src="./dist/arrowpuck.min.js"></script>
 
   <script>
-    let soundActive = false;
-
-    // ArrowPuck is loaded globally from dist/arrowpuck.min.js
+    // Initialize the widget seamlessly on the portfolio site
     const widget = new ArrowPuck({
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
       gravity: 0.42,
       powerMultiplier: 0.22,
       maxDragRadius: 90,
-      theme: {
-        primaryColor: '#f59e0b',
-        arrowColor: '#27272a',
-        targetRingColors: ['#18181b', '#27272a', '#f59e0b']
-      },
-      enableTrajectory: true,
-      enableSound: false,
-      onHit: (score, totalScore) => {
-        updateStats();
-        hideLauncherHint();
+      onHit: (score, total) => {
+        dismissHint();
       },
       onMiss: () => {
-        updateStats();
-        hideLauncherHint();
+        dismissHint();
       }
     });
 
-    // Scoreboard UI updates
-    const scoreCounter = document.getElementById('score-counter');
-    const accuracyCounter = document.getElementById('accuracy-counter');
-    const launcherHint = document.getElementById('launcher-hint');
-
-    function updateStats() {
-      const stats = widget.getStats();
-      if (scoreCounter) scoreCounter.textContent = stats.score;
-      if (accuracyCounter) accuracyCounter.textContent = `${stats.accuracy}% (${stats.hits}/${stats.shots})`;
-    }
-
-    function hideLauncherHint() {
-      if (launcherHint) {
-        launcherHint.style.opacity = '0';
-        setTimeout(() => launcherHint.remove(), 600);
+    function dismissHint() {
+      const hint = document.getElementById('hint');
+      if (hint) {
+        hint.style.opacity = '0';
+        setTimeout(() => hint.remove(), 500);
       }
     }
 
-    // Header Controls
-    const soundToggle = document.getElementById('sound-toggle');
-    soundToggle?.addEventListener('click', () => {
-      soundActive = !soundActive;
-      widget.options.enableSound = soundActive;
-      if (soundActive && !widget.audioCtx) {
-        widget.initAudio();
-      }
-      soundToggle.textContent = soundActive ? 'Ses: Açık' : 'Ses: Kapalı';
-      soundToggle.style.color = soundActive ? 'var(--accent)' : 'var(--text-muted)';
-      showToast(soundActive ? 'Ses açıldı (Web Audio sentezleyici aktif)' : 'Ses kapatıldı');
-    });
-
-    const resetBtn = document.getElementById('reset-btn');
-    resetBtn?.addEventListener('click', () => {
-      widget.reset();
-      updateStats();
-      showToast('Skor sıfırlandı.');
-    });
-
-    // Interactive button verification
-    document.getElementById('btn-hero-action')?.addEventListener('click', () => {
-      showToast('Buton tıklandı! Canvas alttaki butonları kesinlikle bloklamıyor.');
-    });
-
-    document.getElementById('btn-hero-select')?.addEventListener('click', () => {
-      showToast('Sayfa metinleri ve tüm bileşenler serbestçe seçilebilir.');
-    });
-
-    document.getElementById('btn-copy-code')?.addEventListener('click', () => {
-      const snippet = `<script src="https://cdn.jsdelivr.net/npm/arrowpuck/dist/arrowpuck.min.js"><\/script>\n<script>\n  new ArrowPuck();\n<\/script>`;
-      navigator.clipboard?.writeText(snippet);
-      showToast('CDN kodu panoya kopyalandı!');
-    });
-
-    // Global toast helper for UI verification
-    window.showToast = function(msg) {
-      const toast = document.getElementById('test-toast');
+    function showFeedback(text) {
+      const toast = document.getElementById('page-toast');
       if (!toast) return;
-      toast.textContent = msg;
+      toast.textContent = text;
       toast.style.display = 'block';
-      clearTimeout(window._toastTimeout);
-      window._toastTimeout = setTimeout(() => {
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
         toast.style.display = 'none';
-      }, 2400);
-    };
+      }, 2200);
+    }
   </script>
 </body>
 </html>

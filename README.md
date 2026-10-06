@@ -117,8 +117,8 @@ Instances of `ArrowPuck` expose the following methods:
 Clone the repository and install developer dependencies:
 
 ```bash
-git clone https://github.com/arifsevban/arrow-puck.git
-cd arrow-puck
+git clone https://github.com/arifsevban/arrowpuck.git
+cd arrowpuck
 npm install
 ```
 
@@ -152,4 +152,4 @@ Compiles the library into `dist/`:
 
 ## License
 
-MIT License. Created by Arif Sevban.
+MIT License. Created by Arif S.
