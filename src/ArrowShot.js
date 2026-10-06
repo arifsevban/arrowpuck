@@ -646,8 +646,9 @@ export class ArrowShot {
 
 // Auto-register to window in browser environments for direct CDN/script-tag usage
 if (typeof window !== 'undefined') {
-  window.ArrowShot = ArrowShot;
   window.ArrowPuck = ArrowShot;
+  window.ArrowShot = ArrowShot;
 }
 
-export default ArrowShot;
+export const ArrowPuck = ArrowShot;
+export default ArrowPuck;

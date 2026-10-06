@@ -1788,9 +1788,11 @@ class ArrowShot {
 
 // Auto-register to window in browser environments for direct CDN/script-tag usage
 if (typeof window !== 'undefined') {
-  window.ArrowShot = ArrowShot;
   window.ArrowPuck = ArrowShot;
+  window.ArrowShot = ArrowShot;
 }
 
-export { ArrowShot, GameState, ArrowShot as default };
+const ArrowPuck = ArrowShot;
+
+export { ArrowPuck, ArrowShot, GameState, ArrowPuck as default };
 //# sourceMappingURL=arrowpuck.esm.js.map

@@ -590,7 +590,7 @@
     });
 
     document.getElementById('btn-copy-code')?.addEventListener('click', () => {
-      const snippet = `<script src="https://cdn.jsdelivr.net/npm/arrow-puck/dist/arrowpuck.min.js"><\/script>\n<script>\n  new ArrowPuck();\n<\/script>`;
+      const snippet = `<script src="https://cdn.jsdelivr.net/npm/arrowpuck/dist/arrowpuck.min.js"><\/script>\n<script>\n  new ArrowPuck();\n<\/script>`;
       navigator.clipboard?.writeText(snippet);
       showToast('CDN kodu panoya kopyalandı!');
     });

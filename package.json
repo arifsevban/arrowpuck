@@ -1,5 +1,5 @@
 {
-  "name": "arrow-puck",
+  "name": "arrowpuck",
   "version": "1.0.0",
   "description": "Non-intrusive interactive easter egg micro-widget with zero dependencies",
   "type": "module",
