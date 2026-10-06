@@ -7,6 +7,7 @@
 import { MathUtils } from './utils/MathUtils.js';
 import { Physics } from './core/Physics.js';
 import { Collision } from './core/Collision.js';
+import { Bow } from './entities/Bow.js';
 import { Slingshot } from './entities/Slingshot.js';
 import { Projectile, ProjectileState } from './entities/Projectile.js';
 import { Target } from './entities/Target.js';
@@ -31,9 +32,9 @@ export class ArrowShot {
       mountTarget: document.body,
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
-      gravity: 0.42,
-      powerMultiplier: 0.22,
-      maxDragRadius: 90,
+      gravity: 0.38,
+      powerMultiplier: 0.36,
+      maxDragRadius: 110,
       airResistance: 0.998,
       theme: {
         primaryColor: '#f59e0b',
@@ -113,8 +114,8 @@ export class ArrowShot {
     this.triggerZone = document.createElement('div');
     this.triggerZone.id = 'arrowshot-trigger';
     this.triggerZone.style.position = 'fixed';
-    this.triggerZone.style.width = '96px';
-    this.triggerZone.style.height = '96px';
+    this.triggerZone.style.width = '104px';
+    this.triggerZone.style.height = '104px';
     this.triggerZone.style.borderRadius = '50%';
     this.triggerZone.style.pointerEvents = 'auto';
     this.triggerZone.style.cursor = 'grab';
@@ -122,8 +123,8 @@ export class ArrowShot {
     this.triggerZone.style.touchAction = 'none';
     this.triggerZone.style.userSelect = 'none';
     this.triggerZone.style.webkitUserSelect = 'none';
-    this.triggerZone.setAttribute('aria-label', 'ArrowShot Launcher');
-    this.triggerZone.title = 'Tıkla ve geriye çekerek nişan al';
+    this.triggerZone.setAttribute('aria-label', 'ArrowPuck Launcher');
+    this.triggerZone.title = 'Tıkla ve yayı geriye çekerek nişan al';
 
     this.mountTarget.appendChild(this.triggerZone);
 
@@ -155,12 +156,12 @@ export class ArrowShot {
 
     // Reposition trigger hotspot element
     if (this.triggerZone) {
-      this.triggerZone.style.left = `${bowCoords.x - 48}px`;
-      this.triggerZone.style.top = `${bowCoords.y - 48}px`;
+      this.triggerZone.style.left = `${bowCoords.x - 52}px`;
+      this.triggerZone.style.top = `${bowCoords.y - 52}px`;
     }
 
-    if (this.slingshot) {
-      this.slingshot.setPosition(bowCoords.x, bowCoords.y);
+    if (this.bow) {
+      this.bow.setPosition(bowCoords.x, bowCoords.y);
     }
     if (this.target) {
       this.target.setPosition(targetCoords.x, targetCoords.y);
@@ -204,15 +205,16 @@ export class ArrowShot {
   }
 
   /**
-   * Instantiates Slingshot, Projectile, Target, and Particle System.
+   * Instantiates Bow, Projectile, Target, and Particle System.
    */
   initEntities() {
-    this.slingshot = new Slingshot({
+    this.bow = new Bow({
       x: this.bowPos.x,
       y: this.bowPos.y,
       maxDragRadius: this.options.maxDragRadius,
       theme: this.options.theme
     });
+    this.slingshot = this.bow; // Backward compatibility alias
 
     this.projectile = new Projectile({
       length: 42,
@@ -244,13 +246,13 @@ export class ArrowShot {
 
     trigger.addEventListener('pointerenter', () => {
       if (this.state === GameState.IDLE) {
-        this.slingshot.isHovered = true;
+        this.bow.isHovered = true;
       }
     });
 
     trigger.addEventListener('pointerleave', () => {
       if (this.state === GameState.IDLE) {
-        this.slingshot.isHovered = false;
+        this.bow.isHovered = false;
       }
     });
 
@@ -260,7 +262,7 @@ export class ArrowShot {
       trigger.setPointerCapture(e.pointerId);
       trigger.style.cursor = 'grabbing';
       this.state = GameState.AIMING;
-      this.slingshot.isHovered = true;
+      this.bow.isHovered = true;
 
       this.updateDrag(e.clientX, e.clientY);
       this.playSound('aim');
@@ -280,7 +282,7 @@ export class ArrowShot {
         // Ignore if already released
       }
       trigger.style.cursor = 'grab';
-      this.slingshot.isHovered = false;
+      this.bow.isHovered = false;
 
       // Minimum pull threshold to avoid accidental micro-clicks
       if (this.dragData.distance >= 12) {
@@ -330,7 +332,7 @@ export class ArrowShot {
     );
 
     this.projectile.launch(vel.vx, vel.vy);
-    this.slingshot.triggerSnapBack(this.dragData.dx, this.dragData.dy);
+    this.bow.triggerSnapBack(this.dragData.dx, this.dragData.dy);
 
     // Disable trigger hotspot while projectile is active
     this.triggerZone.style.pointerEvents = 'none';
@@ -478,7 +480,7 @@ export class ArrowShot {
    * Per-frame updates.
    */
   update(dt) {
-    this.slingshot.update(dt);
+    this.bow.update(dt);
     this.target.update(dt);
     this.particles.update(dt);
     this.popups.update(dt);
@@ -541,7 +543,7 @@ export class ArrowShot {
       vel.vy,
       this.options.gravity,
       this.options.airResistance,
-      52,
+      80,
       2
     );
 
@@ -570,8 +572,8 @@ export class ArrowShot {
 
     const isAiming = this.state === GameState.AIMING;
 
-    // 1. Back layer of slingshot (left band, max-drag bounds)
-    this.slingshot.renderBack(
+    // 1. Back layer of bow (bowstring and draw guide)
+    this.bow.renderBack(
       ctx,
       isAiming,
       this.dragData.dragX,
@@ -589,8 +591,8 @@ export class ArrowShot {
       this.projectile.render(ctx);
     }
 
-    // 4. Front layer of slingshot (right band, handle, pouch)
-    this.slingshot.renderFront(
+    // 4. Front layer of bow (recurve limbs, riser grip, arrow shelf)
+    this.bow.renderFront(
       ctx,
       isAiming,
       this.dragData.dragX,

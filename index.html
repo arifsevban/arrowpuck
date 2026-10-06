@@ -432,7 +432,7 @@
 
   <!-- Subtle Easter Egg Indicator -->
   <div class="easter-egg-hint" id="hint">
-    <span>← Pull slingshot to aim &amp; release</span>
+    <span>← Pull bowstring to aim &amp; release</span>
   </div>
 
   <div id="page-toast"></div>
@@ -445,9 +445,9 @@
     const widget = new ArrowPuck({
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
-      gravity: 0.42,
-      powerMultiplier: 0.22,
-      maxDragRadius: 90,
+      gravity: 0.38,
+      powerMultiplier: 0.36,
+      maxDragRadius: 110,
       onHit: (score, total) => {
         dismissHint();
       },

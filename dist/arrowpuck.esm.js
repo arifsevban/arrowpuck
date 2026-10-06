@@ -272,86 +272,82 @@ class Collision {
 }
 
 /**
- * Slingshot.js - Minimalist Industrial Slingshot / Launcher
- * Renders the structural fork, dynamic elastic cords, and handles snap-back physics.
+ * Bow.js - Precision Archery Recurve Bow Entity
+ * Renders an elegant aerodynamic recurve bow with flexing limbs,
+ * dynamic aiming rotation, high-tensile bowstring, and vibration dampening.
  */
 
 
-class Slingshot {
+class Bow {
   /**
    * @param {Object} options
    * @param {number} options.x - Base anchor X coordinate
    * @param {number} options.y - Base anchor Y coordinate
-   * @param {number} [options.maxDragRadius=90] - Maximum pull distance
-   * @param {Object} [options.theme] - Theme color tokens
+   * @param {number} [options.maxDragRadius=110] - Maximum pull distance
+   * @param {Object} [options.theme] - Theme customization
    */
-  constructor({ x, y, maxDragRadius = 90, theme = {} }) {
+  constructor({ x, y, maxDragRadius = 110, theme = {} }) {
     this.x = x;
     this.y = y;
     this.maxDragRadius = maxDragRadius;
 
     this.theme = {
       accent: theme.primaryColor || '#f59e0b',
-      frame: '#27272a',
-      frameHighlight: '#3f3f46',
-      band: '#71717a',
-      bandActive: '#e4e4e7',
-      pouch: '#18181b',
-      guide: 'rgba(245, 158, 11, 0.25)',
+      riser: '#27272a',
+      riserHighlight: '#3f3f46',
+      limb: '#18181b',
+      limbEdge: '#3f3f46',
+      string: '#71717a',
+      stringActive: '#f4f4f5',
+      nock: '#f59e0b',
       ...theme
     };
 
-    // Fork geometry (relative to anchor x, y)
-    this.forkWidth = 36;
-    this.forkHeight = 32;
+    // Bow physical dimensions
+    this.bowLength = 76; // Total tip-to-tip span
+    this.halfLength = this.bowLength / 2;
+    this.riserHeight = 22;
 
-    // Left and right tine tips
-    this.leftTine = { x: this.x - this.forkWidth / 2, y: this.y - 14 };
-    this.rightTine = { x: this.x + this.forkWidth / 2, y: this.y - 14 };
+    // Resting orientation (pointing towards top-right at -45 deg)
+    this.defaultAngle = -Math.PI / 4;
+    this.currentAngle = this.defaultAngle;
 
-    // Snap-back animation state
+    // Elastic snap-back and vibration
     this.isSnapping = false;
     this.snapTime = 0;
-    this.snapDisplacement = { x: 0, y: 0 };
+    this.snapDisplacement = { dx: 0, dy: 0 };
 
-    // Hover & idle pulse
+    // Hover & interaction bounds
     this.isHovered = false;
     this.idleTime = 0;
   }
 
   /**
-   * Updates position if window resizes.
+   * Updates position on resize.
    */
   setPosition(x, y) {
     this.x = x;
     this.y = y;
-    this.leftTine = { x: this.x - this.forkWidth / 2, y: this.y - 14 };
-    this.rightTine = { x: this.x + this.forkWidth / 2, y: this.y - 14 };
   }
 
   /**
-   * Triggers elastic snap-back animation when the projectile is released.
-   * 
-   * @param {number} releaseDx - X displacement at release
-   * @param {number} releaseDy - Y displacement at release
+   * Triggers string snap-back when arrow is fired.
    */
   triggerSnapBack(releaseDx, releaseDy) {
     this.isSnapping = true;
     this.snapTime = 0;
-    this.snapDisplacement = { x: releaseDx, y: releaseDy };
+    this.snapDisplacement = { dx: releaseDx, dy: releaseDy };
   }
 
   /**
-   * Per-frame update for animations.
-   * @param {number} dt - Delta time in seconds (or normalized frame)
+   * Per-frame animation update.
    */
   update(dt = 0.016) {
     this.idleTime += dt;
 
     if (this.isSnapping) {
       this.snapTime += dt;
-      // Damped vibration for 0.25s
-      if (this.snapTime > 0.25) {
+      if (this.snapTime > 0.28) {
         this.isSnapping = false;
         this.snapTime = 0;
       }
@@ -359,151 +355,162 @@ class Slingshot {
   }
 
   /**
-   * Draws the slingshot behind the arrow (elastic bands + fork base).
-   * 
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {boolean} isAiming - Whether the user is dragging
-   * @param {number} dragX - Current drag pouch X
-   * @param {number} dragY - Current drag pouch Y
-   * @param {number} pullRatio - Pull tension ratio [0, 1]
+   * Computes limb tips and bow rotation for given aiming state.
+   */
+  getGeometry(isAiming, dragX, dragY, pullRatio = 0) {
+    let angle = this.defaultAngle;
+    let nockX = this.x - Math.cos(angle) * 4;
+    let nockY = this.y - Math.sin(angle) * 4;
+
+    if (isAiming) {
+      const dx = this.x - dragX;
+      const dy = this.y - dragY;
+      angle = Math.atan2(dy, dx);
+      nockX = dragX;
+      nockY = dragY;
+    } else if (this.isSnapping) {
+      const decay = Math.exp(-22 * this.snapTime);
+      const wave = Math.cos(56 * this.snapTime);
+      const factor = decay * wave * 0.35;
+      nockX = this.x - this.snapDisplacement.dx * factor;
+      nockY = this.y - this.snapDisplacement.dy * factor;
+    }
+
+    this.currentAngle = angle;
+
+    // Perpendicular angle for limb span
+    const perpAngle = angle + Math.PI / 2;
+    const limbSpan = this.halfLength;
+
+    // Limbs flex backward slightly when drawn
+    const limbFlex = isAiming ? pullRatio * 7 : 0;
+    const flexDx = -Math.cos(angle) * limbFlex;
+    const flexDy = -Math.sin(angle) * limbFlex;
+
+    const tip1 = {
+      x: this.x + Math.cos(perpAngle) * limbSpan + flexDx,
+      y: this.y + Math.sin(perpAngle) * limbSpan + flexDy
+    };
+
+    const tip2 = {
+      x: this.x - Math.cos(perpAngle) * limbSpan + flexDx,
+      y: this.y - Math.sin(perpAngle) * limbSpan + flexDy
+    };
+
+    return { angle, nockX, nockY, tip1, tip2, perpAngle, limbFlex };
+  }
+
+  /**
+   * Renders the rear layer (drag range guide + bowstring).
    */
   renderBack(ctx, isAiming, dragX, dragY, pullRatio = 0) {
     ctx.save();
 
-    // Determine current pouch position (idle, dragging, or snapping)
-    let currentPouchX = this.x;
-    let currentPouchY = this.y - 4;
+    const { nockX, nockY, tip1, tip2 } = this.getGeometry(isAiming, dragX, dragY, pullRatio);
 
-    if (isAiming) {
-      currentPouchX = dragX;
-      currentPouchY = dragY;
-    } else if (this.isSnapping) {
-      // Elastic damped harmonic snap-back towards center
-      const decay = Math.exp(-18 * this.snapTime);
-      const wave = Math.cos(48 * this.snapTime);
-      const factor = decay * wave;
-      currentPouchX = this.x - this.snapDisplacement.dx * factor * 0.4;
-      currentPouchY = this.y - 4 - this.snapDisplacement.dy * factor * 0.4;
-    }
-
-    // 1. Draw Max Drag Range & Interactive Guide when hovered or aiming
+    // 1. Max drag boundary indicator when hovered or aiming
     if (this.isHovered || isAiming) {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.maxDragRadius, 0, Math.PI * 2);
       ctx.strokeStyle = isAiming
         ? 'rgba(245, 158, 11, 0.22)'
-        : 'rgba(113, 113, 122, 0.18)';
+        : 'rgba(113, 113, 122, 0.16)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 6]);
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // 2. Left Elastic Band
+    // 2. High-tensile Bowstring (Upper Tip -> Arrow Nock -> Lower Tip)
     ctx.beginPath();
-    ctx.moveTo(this.leftTine.x, this.leftTine.y);
-    ctx.lineTo(currentPouchX, currentPouchY);
-    ctx.strokeStyle = isAiming ? this.theme.bandActive : this.theme.band;
-    ctx.lineWidth = Math.max(1.4, 2.6 - pullRatio * 1.0);
+    ctx.moveTo(tip1.x, tip1.y);
+    ctx.lineTo(nockX, nockY);
+    ctx.lineTo(tip2.x, tip2.y);
+    ctx.strokeStyle = isAiming ? this.theme.stringActive : this.theme.string;
+    ctx.lineWidth = isAiming ? 1.4 : 1.8;
     ctx.lineCap = 'round';
     ctx.stroke();
+
+    // 3. String nocking point brass ring
+    ctx.beginPath();
+    ctx.arc(nockX, nockY, 3, 0, Math.PI * 2);
+    ctx.fillStyle = isAiming ? this.theme.accent : this.theme.riserHighlight;
+    ctx.fill();
 
     ctx.restore();
   }
 
   /**
-   * Draws the front elements (right band, fork handle, pouch).
-   * 
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {boolean} isAiming
-   * @param {number} dragX
-   * @param {number} dragY
-   * @param {number} pullRatio
+   * Renders the front layer (recurve bow body, grip, and limbs).
    */
   renderFront(ctx, isAiming, dragX, dragY, pullRatio = 0) {
     ctx.save();
 
-    let currentPouchX = this.x;
-    let currentPouchY = this.y - 4;
+    const { angle, tip1, tip2, perpAngle, limbFlex } = this.getGeometry(isAiming, dragX, dragY, pullRatio);
 
-    if (isAiming) {
-      currentPouchX = dragX;
-      currentPouchY = dragY;
-    } else if (this.isSnapping) {
-      const decay = Math.exp(-18 * this.snapTime);
-      const wave = Math.cos(48 * this.snapTime);
-      const factor = decay * wave;
-      currentPouchX = this.x - this.snapDisplacement.dx * factor * 0.4;
-      currentPouchY = this.y - 4 - this.snapDisplacement.dy * factor * 0.4;
-    }
+    // Translate and rotate along bow center
+    ctx.translate(this.x, this.y);
+    ctx.rotate(angle);
 
-    // 1. Right Elastic Band
+    const H = this.halfLength;
+    const flex = isAiming ? pullRatio * 7 : 0;
+
+    // 1. Sleek Recurve Limbs (Aerodynamic carbon laminate curve)
+    // Upper Limb Curve: From (0, 0) to tip at (-flex, H)
     ctx.beginPath();
-    ctx.moveTo(this.rightTine.x, this.rightTine.y);
-    ctx.lineTo(currentPouchX, currentPouchY);
-    ctx.strokeStyle = isAiming ? this.theme.bandActive : this.theme.band;
-    ctx.lineWidth = Math.max(1.4, 2.6 - pullRatio * 1.0);
-    ctx.lineCap = 'round';
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(8, H * 0.4, 6 - flex * 0.5, H * 0.8, -flex, H);
+    // Outer recurve return at tip
+    ctx.bezierCurveTo(4 - flex, H * 0.85, 4, H * 0.35, 0, 0);
+    ctx.fillStyle = this.theme.limb;
+    ctx.fill();
+    ctx.strokeStyle = this.theme.limbEdge;
+    ctx.lineWidth = 1.4;
     ctx.stroke();
 
-    // 2. Leather Pouch
+    // Lower Limb Curve: From (0, 0) to tip at (-flex, -H)
     ctx.beginPath();
-    ctx.arc(currentPouchX, currentPouchY, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = this.theme.pouch;
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(8, -H * 0.4, 6 - flex * 0.5, -H * 0.8, -flex, -H);
+    ctx.bezierCurveTo(4 - flex, -H * 0.85, 4, -H * 0.35, 0, 0);
+    ctx.fillStyle = this.theme.limb;
     ctx.fill();
-    ctx.strokeStyle = isAiming ? this.theme.accent : this.theme.band;
+    ctx.strokeStyle = this.theme.limbEdge;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // 2. Machined Limb Tips (Reinforced nock caps)
+    ctx.fillStyle = this.theme.accent;
+    ctx.beginPath();
+    ctx.arc(-flex, H, 2.5, 0, Math.PI * 2);
+    ctx.arc(-flex, -H, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Ergonomic Bow Riser & Leather Grip
+    const gripH = this.riserHeight;
+    ctx.beginPath();
+    ctx.roundRect(-2.5, -gripH / 2, 7, gripH, 3.5);
+    ctx.fillStyle = this.theme.riser;
+    ctx.fill();
+    ctx.strokeStyle = this.theme.riserHighlight;
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // 3. Precision Industrial Fork Frame
-    this.renderForkFrame(ctx);
-
-    ctx.restore();
-  }
-
-  /**
-   * Renders the sleek minimalist metal fork frame.
-   * Geometric, crisp lines with subtle industrial bevel.
-   */
-  renderForkFrame(ctx) {
-    const { x, y } = this;
-    this.forkWidth / 2;
-
-    // Metallic fork stem and prongs
+    // Accent line on grip
     ctx.beginPath();
-    // Stem bottom
-    ctx.moveTo(x, y + 28);
-    // Stem rising
-    ctx.lineTo(x, y + 4);
-    // Left branch
-    ctx.quadraticCurveTo(x - 4, y - 4, this.leftTine.x, this.leftTine.y);
-    // Back to stem
-    ctx.moveTo(x, y + 4);
-    // Right branch
-    ctx.quadraticCurveTo(x + 4, y - 4, this.rightTine.x, this.rightTine.y);
-
-    ctx.strokeStyle = this.theme.frameHighlight;
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    ctx.moveTo(1, -gripH * 0.35);
+    ctx.lineTo(1, gripH * 0.35);
+    ctx.strokeStyle = this.theme.accent;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    ctx.strokeStyle = this.theme.frame;
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-
-    // Fork tine tip caps (machined pegs)
+    // Arrow shelf indicator
     ctx.fillStyle = this.theme.accent;
     ctx.beginPath();
-    ctx.arc(this.leftTine.x, this.leftTine.y, 2.8, 0, Math.PI * 2);
-    ctx.arc(this.rightTine.x, this.rightTine.y, 2.8, 0, Math.PI * 2);
+    ctx.arc(4, 0, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Base mounting node
-    ctx.fillStyle = this.theme.frameHighlight;
-    ctx.beginPath();
-    ctx.arc(x, y + 28, 3.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -1173,9 +1180,9 @@ class ArrowShot {
       mountTarget: document.body,
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
-      gravity: 0.42,
-      powerMultiplier: 0.22,
-      maxDragRadius: 90,
+      gravity: 0.38,
+      powerMultiplier: 0.36,
+      maxDragRadius: 110,
       airResistance: 0.998,
       theme: {
         primaryColor: '#f59e0b',
@@ -1255,8 +1262,8 @@ class ArrowShot {
     this.triggerZone = document.createElement('div');
     this.triggerZone.id = 'arrowshot-trigger';
     this.triggerZone.style.position = 'fixed';
-    this.triggerZone.style.width = '96px';
-    this.triggerZone.style.height = '96px';
+    this.triggerZone.style.width = '104px';
+    this.triggerZone.style.height = '104px';
     this.triggerZone.style.borderRadius = '50%';
     this.triggerZone.style.pointerEvents = 'auto';
     this.triggerZone.style.cursor = 'grab';
@@ -1264,8 +1271,8 @@ class ArrowShot {
     this.triggerZone.style.touchAction = 'none';
     this.triggerZone.style.userSelect = 'none';
     this.triggerZone.style.webkitUserSelect = 'none';
-    this.triggerZone.setAttribute('aria-label', 'ArrowShot Launcher');
-    this.triggerZone.title = 'Tıkla ve geriye çekerek nişan al';
+    this.triggerZone.setAttribute('aria-label', 'ArrowPuck Launcher');
+    this.triggerZone.title = 'Tıkla ve yayı geriye çekerek nişan al';
 
     this.mountTarget.appendChild(this.triggerZone);
 
@@ -1297,12 +1304,12 @@ class ArrowShot {
 
     // Reposition trigger hotspot element
     if (this.triggerZone) {
-      this.triggerZone.style.left = `${bowCoords.x - 48}px`;
-      this.triggerZone.style.top = `${bowCoords.y - 48}px`;
+      this.triggerZone.style.left = `${bowCoords.x - 52}px`;
+      this.triggerZone.style.top = `${bowCoords.y - 52}px`;
     }
 
-    if (this.slingshot) {
-      this.slingshot.setPosition(bowCoords.x, bowCoords.y);
+    if (this.bow) {
+      this.bow.setPosition(bowCoords.x, bowCoords.y);
     }
     if (this.target) {
       this.target.setPosition(targetCoords.x, targetCoords.y);
@@ -1346,15 +1353,16 @@ class ArrowShot {
   }
 
   /**
-   * Instantiates Slingshot, Projectile, Target, and Particle System.
+   * Instantiates Bow, Projectile, Target, and Particle System.
    */
   initEntities() {
-    this.slingshot = new Slingshot({
+    this.bow = new Bow({
       x: this.bowPos.x,
       y: this.bowPos.y,
       maxDragRadius: this.options.maxDragRadius,
       theme: this.options.theme
     });
+    this.slingshot = this.bow; // Backward compatibility alias
 
     this.projectile = new Projectile({
       length: 42,
@@ -1386,13 +1394,13 @@ class ArrowShot {
 
     trigger.addEventListener('pointerenter', () => {
       if (this.state === GameState.IDLE) {
-        this.slingshot.isHovered = true;
+        this.bow.isHovered = true;
       }
     });
 
     trigger.addEventListener('pointerleave', () => {
       if (this.state === GameState.IDLE) {
-        this.slingshot.isHovered = false;
+        this.bow.isHovered = false;
       }
     });
 
@@ -1402,7 +1410,7 @@ class ArrowShot {
       trigger.setPointerCapture(e.pointerId);
       trigger.style.cursor = 'grabbing';
       this.state = GameState.AIMING;
-      this.slingshot.isHovered = true;
+      this.bow.isHovered = true;
 
       this.updateDrag(e.clientX, e.clientY);
       this.playSound('aim');
@@ -1422,7 +1430,7 @@ class ArrowShot {
         // Ignore if already released
       }
       trigger.style.cursor = 'grab';
-      this.slingshot.isHovered = false;
+      this.bow.isHovered = false;
 
       // Minimum pull threshold to avoid accidental micro-clicks
       if (this.dragData.distance >= 12) {
@@ -1472,7 +1480,7 @@ class ArrowShot {
     );
 
     this.projectile.launch(vel.vx, vel.vy);
-    this.slingshot.triggerSnapBack(this.dragData.dx, this.dragData.dy);
+    this.bow.triggerSnapBack(this.dragData.dx, this.dragData.dy);
 
     // Disable trigger hotspot while projectile is active
     this.triggerZone.style.pointerEvents = 'none';
@@ -1620,7 +1628,7 @@ class ArrowShot {
    * Per-frame updates.
    */
   update(dt) {
-    this.slingshot.update(dt);
+    this.bow.update(dt);
     this.target.update(dt);
     this.particles.update(dt);
     this.popups.update(dt);
@@ -1683,7 +1691,7 @@ class ArrowShot {
       vel.vy,
       this.options.gravity,
       this.options.airResistance,
-      52,
+      80,
       2
     );
 
@@ -1712,8 +1720,8 @@ class ArrowShot {
 
     const isAiming = this.state === GameState.AIMING;
 
-    // 1. Back layer of slingshot (left band, max-drag bounds)
-    this.slingshot.renderBack(
+    // 1. Back layer of bow (bowstring and draw guide)
+    this.bow.renderBack(
       ctx,
       isAiming,
       this.dragData.dragX,
@@ -1731,8 +1739,8 @@ class ArrowShot {
       this.projectile.render(ctx);
     }
 
-    // 4. Front layer of slingshot (right band, handle, pouch)
-    this.slingshot.renderFront(
+    // 4. Front layer of bow (recurve limbs, riser grip, arrow shelf)
+    this.bow.renderFront(
       ctx,
       isAiming,
       this.dragData.dragX,

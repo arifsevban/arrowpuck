@@ -2,16 +2,16 @@
 
 A lightweight, non-intrusive interactive Easter egg micro-widget built with pure Vanilla JavaScript (ES6+) and HTML5 Canvas.
 
-arrowpuck allows developers and designers to add an elegant slingshot archery interaction to any webpage (portfolios, agency websites, blogs, 404 pages) without obstructing page interactions, clicking, text selection, or scrolling.
+arrowpuck allows developers and designers to add an elegant archery bow interaction to any webpage (portfolios, agency websites, blogs, 404 pages) without obstructing page interactions, clicking, text selection, or scrolling.
 
 ---
 
 ## Features
 
 - Zero external dependencies: Built with native HTML5 2D Canvas and ES6+. No physics engines or bulky libraries.
-- Non-intrusive by design: The full-screen canvas maintains `pointer-events: none` by default. Clicks, text selection, and scrolling pass through uninterrupted to the underlying website. Only the slingshot handle captures drag events.
+- Non-intrusive by design: The full-screen canvas maintains `pointer-events: none` by default. Clicks, text selection, and scrolling pass through uninterrupted to the underlying website. Only the bow handle captures drag events.
 - Physical Euler integration: Realistic parabolic arrow flight calculated with gravity acceleration and aerodynamic drag.
-- Accurate trajectory preview: Real-time dotted parabolic trajectory forecast rendered dynamically while pulling the slingshot.
+- Accurate trajectory preview: Real-time dotted parabolic trajectory forecast rendered dynamically while drawing the bow.
 - Concentric ring scoring: Target board evaluates hit distance into three scoring tiers (300 points for bullseye, 150 points for inner ring, 50 points for outer ring).
 - Minimalist visual aesthetics: Clean industrial design with monochrome palettes, crisp vector-sharp geometry, high-DPI retina display scaling, damped harmonic target shake, and physical micro-sparks.
 - Dual distribution: Available as both an ES Module for modern bundlers and a minified UMD standalone bundle for instant CDN script-tag usage.
@@ -76,9 +76,9 @@ Pass a configuration object to `new ArrowPuck(options)`:
 | `mountTarget` | HTMLElement | `document.body` | DOM container element where the fixed canvas is appended. |
 | `bowPosition` | string \| object | `'bottom-left'` | Launcher placement. Accepts `'bottom-left'`, `'bottom-right'`, or `{ x, y }`. |
 | `targetPosition` | string \| object | `'top-right'` | Target placement. Accepts `'top-right'`, `'top-left'`, or `{ x, y }`. |
-| `gravity` | number | `0.42` | Vertical gravitational acceleration in pixels per frame squared. |
-| `powerMultiplier` | number | `0.22` | Velocity scale factor applied to the clamped pull displacement vector. |
-| `maxDragRadius` | number | `90` | Maximum pull radius in pixels. Pull distance beyond this is clamped. |
+| `gravity` | number | `0.38` | Vertical gravitational acceleration in pixels per frame squared. |
+| `powerMultiplier` | number | `0.36` | Velocity scale factor applied to the clamped pull displacement vector. |
+| `maxDragRadius` | number | `110` | Maximum pull radius in pixels. Pull distance beyond this is clamped. |
 | `airResistance` | number | `0.998` | Horizontal velocity multiplier applied each frame. |
 | `theme` | object | `{ ... }` | Color tokens for customization (see Theme Object below). |
 | `enableTrajectory` | boolean | `true` | Enables dotted trajectory forecast line during aiming. |
