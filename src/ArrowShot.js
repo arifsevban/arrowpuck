@@ -70,6 +70,10 @@ export class ArrowShot {
     this.resetTimer = 0;
     this.rafId = null;
 
+    // Tactile screen micro-shake on bullseye hit
+    this.screenShake = 0;
+    this.screenShakeMagnitude = 0;
+
     // Pull tracking
     this.dragData = {
       dx: 0,
@@ -579,21 +583,29 @@ export class ArrowShot {
     const impactSpeed = Math.hypot(this.projectile.vx, this.projectile.vy);
     this.target.hit(impactY, Math.max(12, impactSpeed));
 
-    // Emit minimalist micro-sparks leftward from impact face
-    this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
+    const isBullseye = hitResult.tier === 'bullseye';
 
-    // Spawn floating score pill
-    this.popups.spawn(this.target.x - 36, impactY, hitResult.score, hitResult.tier);
-
-    this.playSound('hit');
+    if (isBullseye) {
+      // Spectacular golden particle burst, dual shockwaves, and stars
+      this.particles.emitBullseyeBurst(impactX, impactY, this.projectile.angle);
+      this.target.triggerBullseyeFlash();
+      this.screenShake = 0.24;
+      this.screenShakeMagnitude = 4.8;
+      this.playSound('bullseye');
+      this.popups.spawn(this.target.x - 48, impactY, hitResult.score, 'bullseye');
+      this.resetTimer = 1.6;
+    } else {
+      // Standard kinetic micro-sparks leftward from impact face
+      this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
+      this.popups.spawn(this.target.x - 36, impactY, hitResult.score, hitResult.tier);
+      this.playSound('hit');
+      this.resetTimer = 1.45;
+    }
 
     // Callback notification
     if (typeof this.options.onHit === 'function') {
       this.options.onHit(hitResult.score, this.totalScore);
     }
-
-    // Schedule reset (allows full visual enjoyment of the pendulum swing)
-    this.resetTimer = 1.45;
   }
 
   /**
@@ -671,6 +683,22 @@ export class ArrowShot {
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.36);
+    } else if (type === 'bullseye') {
+      // Celebratory multi-tone golden chime arpeggio
+      const notes = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6 major triad
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        const start = now + idx * 0.055;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.22, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.46);
+      });
     } else if (type === 'miss') {
       // Dull floor thud
       const osc = ctx.createOscillator();
@@ -710,6 +738,11 @@ export class ArrowShot {
       this.openProgress = Math.min(1, this.openProgress + dt / 0.45);
     } else if (!this.isOpen && this.openProgress > 0) {
       this.openProgress = Math.max(0, this.openProgress - dt / 0.35);
+    }
+
+    // Decay tactile screen shake
+    if (this.screenShake > 0) {
+      this.screenShake = Math.max(0, this.screenShake - dt);
     }
 
     this.bow.update(dt);
@@ -825,6 +858,17 @@ export class ArrowShot {
       return;
     }
 
+    // Apply tactile screen micro-shake on bullseye impact
+    let shook = false;
+    if (this.screenShake > 0) {
+      shook = true;
+      const decay = this.screenShake / 0.24;
+      const sx = (Math.random() - 0.5) * 2 * this.screenShakeMagnitude * decay;
+      const sy = (Math.random() - 0.5) * 2 * this.screenShakeMagnitude * decay;
+      ctx.save();
+      ctx.translate(sx, sy);
+    }
+
     // 1. Target Board (Renders ceiling mount, suspension cord & swinging board)
     this.target.render(ctx);
 
@@ -879,6 +923,10 @@ export class ArrowShot {
 
     // 5. FX Score Popups
     this.popups.render(ctx);
+
+    if (shook) {
+      ctx.restore();
+    }
   }
 
   /**

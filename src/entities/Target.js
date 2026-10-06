@@ -62,6 +62,9 @@ export class Target {
     this.initialYOffset = -(this.y + this.height + 60);
     this.dropYOffset = this.isDeployed ? 0 : this.initialYOffset;
 
+    // Bullseye golden flash intensity [0, 1]
+    this.bullseyeFlash = 0;
+
     // Aliases for compatibility
     this.offsetX = 0;
     this.offsetY = this.dropYOffset;
@@ -132,6 +135,13 @@ export class Target {
     // Angular tilt torque: hits near bottom kick out dramatically
     const normalizedLever = leverArm / this.height; // [0.04, 1.0]
     this.tiltAmplitude = normalizedLever * (impactSpeed / 14) * 0.24;
+  }
+
+  /**
+   * Triggers a radiant golden energy flash across the bullseye notch and core.
+   */
+  triggerBullseyeFlash() {
+    this.bullseyeFlash = 1.0;
   }
 
   /**
@@ -212,6 +222,11 @@ export class Target {
 
     this.offsetX = this.swayX;
     this.offsetY = this.swayY + this.dropYOffset;
+
+    // Decay bullseye golden flash
+    if (this.bullseyeFlash > 0) {
+      this.bullseyeFlash = Math.max(0, this.bullseyeFlash - dt * 2.4);
+    }
   }
 
   /**
@@ -426,6 +441,23 @@ export class Target {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
+
+    // Bullseye Radiant Golden Flash Glow
+    if (this.bullseyeFlash > 0.01) {
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 24 * this.bullseyeFlash;
+      ctx.fillStyle = `rgba(251, 191, 36, ${0.45 * this.bullseyeFlash})`;
+      ctx.fillRect(boardLeft - 4, centerY - z1 - 3, boardW + 8, (z1 + 3) * 2);
+
+      // Radial energy ring from notch
+      ctx.beginPath();
+      ctx.arc(strikeX, centerY, 6 + (1 - this.bullseyeFlash) * 16, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.65 * this.bullseyeFlash})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 9. Top & Bottom Machined Metal End Caps
     ctx.fillStyle = this.theme.backplateBorder;

@@ -849,6 +849,9 @@ class Target {
     this.initialYOffset = -(this.y + this.height + 60);
     this.dropYOffset = this.isDeployed ? 0 : this.initialYOffset;
 
+    // Bullseye golden flash intensity [0, 1]
+    this.bullseyeFlash = 0;
+
     // Aliases for compatibility
     this.offsetX = 0;
     this.offsetY = this.dropYOffset;
@@ -919,6 +922,13 @@ class Target {
     // Angular tilt torque: hits near bottom kick out dramatically
     const normalizedLever = leverArm / this.height; // [0.04, 1.0]
     this.tiltAmplitude = normalizedLever * (impactSpeed / 14) * 0.24;
+  }
+
+  /**
+   * Triggers a radiant golden energy flash across the bullseye notch and core.
+   */
+  triggerBullseyeFlash() {
+    this.bullseyeFlash = 1.0;
   }
 
   /**
@@ -999,6 +1009,11 @@ class Target {
 
     this.offsetX = this.swayX;
     this.offsetY = this.swayY + this.dropYOffset;
+
+    // Decay bullseye golden flash
+    if (this.bullseyeFlash > 0) {
+      this.bullseyeFlash = Math.max(0, this.bullseyeFlash - dt * 2.4);
+    }
   }
 
   /**
@@ -1214,6 +1229,23 @@ class Target {
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
+    // Bullseye Radiant Golden Flash Glow
+    if (this.bullseyeFlash > 0.01) {
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 24 * this.bullseyeFlash;
+      ctx.fillStyle = `rgba(251, 191, 36, ${0.45 * this.bullseyeFlash})`;
+      ctx.fillRect(boardLeft - 4, centerY - z1 - 3, boardW + 8, (z1 + 3) * 2);
+
+      // Radial energy ring from notch
+      ctx.beginPath();
+      ctx.arc(strikeX, centerY, 6 + (1 - this.bullseyeFlash) * 16, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.65 * this.bullseyeFlash})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // 9. Top & Bottom Machined Metal End Caps
     ctx.fillStyle = this.theme.backplateBorder;
     ctx.fillRect(strikeX, 4, W, 2.5);
@@ -1286,6 +1318,103 @@ class Spark {
   }
 }
 
+class Shockwave {
+  constructor(x, y, maxRadius = 85, duration = 0.58, color = '#f59e0b') {
+    this.x = x;
+    this.y = y;
+    this.maxRadius = maxRadius;
+    this.duration = duration;
+    this.time = 0;
+    this.color = color;
+  }
+
+  update(dt) {
+    this.time += dt;
+  }
+
+  get isDead() {
+    return this.time >= this.duration;
+  }
+
+  render(ctx) {
+    const progress = Math.min(1, this.time / this.duration);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const radius = ease * this.maxRadius;
+    const alpha = (1 - progress);
+
+    ctx.save();
+    // Primary outer expanding shockwave
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = Math.max(1, 3.8 * (1 - progress));
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.stroke();
+
+    // Inner bright white shockwave ring
+    if (radius > 12) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, radius * 0.65, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(0.8, 2.0 * (1 - progress));
+      ctx.globalAlpha = alpha * 0.7;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+class Glitter {
+  constructor(x, y, vx, vy, color, size, life) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.color = color;
+    this.size = size;
+    this.maxLife = life;
+    this.life = life;
+    this.rotation = Math.random() * Math.PI;
+    this.rotSpeed = (Math.random() - 0.5) * 8;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    this.vy += 0.09;
+    this.vx *= 0.95;
+    this.vy *= 0.95;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rotation += this.rotSpeed * dt;
+  }
+
+  get isDead() {
+    return this.life <= 0;
+  }
+
+  render(ctx) {
+    const progress = Math.max(0, this.life / this.maxLife);
+    const alpha = Math.sin(progress * Math.PI); // Twinkle fade in and out
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+
+    // 4-pointed golden sparkle star
+    const r = this.size;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 2);
+    ctx.quadraticCurveTo(0, 0, r * 2, 0);
+    ctx.quadraticCurveTo(0, 0, 0, r * 2);
+    ctx.quadraticCurveTo(0, 0, -r * 2, 0);
+    ctx.quadraticCurveTo(0, 0, 0, -r * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
 class ParticleSystem {
   /**
    * @param {Object} [options]
@@ -1328,6 +1457,51 @@ class ParticleSystem {
       const life = MathUtils.randomRange(0.35, 0.65);
 
       this.particles.push(new Spark(x, y, vx, vy, color, size, life));
+    }
+  }
+
+  /**
+   * Spawns a grand, spectacular particle burst for razor-center bullseye hits.
+   * Includes expanding dual shockwaves, high-speed kinetic sparks, and golden twinkling stars.
+   * 
+   * @param {number} x - Impact X coordinate
+   * @param {number} y - Impact Y coordinate
+   * @param {number} impactAngle - Direction of arrow at impact
+   */
+  emitBullseyeBurst(x, y, impactAngle) {
+    // 1. Dual expanding shockwaves
+    this.particles.push(new Shockwave(x, y, 95, 0.65, this.accentColor));
+    this.particles.push(new Shockwave(x, y, 52, 0.45, '#ffffff'));
+
+    // 2. High-speed radiant kinetic sparks (58 particles)
+    const reboundAngle = impactAngle + Math.PI;
+    const goldPalette = ['#f59e0b', '#fbbf24', '#fde68a', '#ffffff', '#fef08a'];
+
+    for (let i = 0; i < 58; i++) {
+      const spread = MathUtils.randomRange(-Math.PI * 0.75, Math.PI * 0.75);
+      const angle = reboundAngle + spread;
+      const speed = MathUtils.randomRange(3.5, 12.0);
+
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed;
+      const color = goldPalette[Math.floor(Math.random() * goldPalette.length)];
+      const size = MathUtils.randomRange(1.6, 2.8);
+      const life = MathUtils.randomRange(0.45, 0.85);
+
+      this.particles.push(new Spark(x, y, vx, vy, color, size, life));
+    }
+
+    // 3. Shimmering 4-point golden glitter stars (24 stars)
+    for (let i = 0; i < 24; i++) {
+      const angle = MathUtils.randomRange(0, Math.PI * 2);
+      const speed = MathUtils.randomRange(1.5, 6.0);
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed - 1.2;
+      const color = i % 2 === 0 ? '#fbbf24' : '#ffffff';
+      const size = MathUtils.randomRange(2.2, 4.2);
+      const life = MathUtils.randomRange(0.65, 1.2);
+
+      this.particles.push(new Glitter(x, y, vx, vy, color, size, life));
     }
   }
 
@@ -1389,8 +1563,10 @@ class ScorePopup {
    */
   spawn(x, y, score, tier = 'outer') {
     let text = `+${score}`;
-    if (tier === 'bullseye') text = `BULLSEYE +${score}`;
+    if (tier === 'bullseye') text = `🎯 BULLSEYE +${score}`;
     else if (tier === 'master') text = `EXCELLENT +${score}`;
+
+    const isBullseye = tier === 'bullseye';
 
     this.popups.push({
       x,
@@ -1400,7 +1576,7 @@ class ScorePopup {
       tier,
       text,
       time: 0,
-      duration: 1.1
+      duration: isBullseye ? 1.35 : 1.1
     });
   }
 
@@ -1416,7 +1592,8 @@ class ScorePopup {
       // Float upward with ease-out deceleration
       const progress = p.time / p.duration;
       const ease = 1 - Math.pow(1 - progress, 3);
-      p.y = p.startY - ease * 34;
+      const floatDistance = p.tier === 'bullseye' ? 42 : 34;
+      p.y = p.startY - ease * floatDistance;
 
       if (p.time >= p.duration) {
         this.popups.splice(i, 1);
@@ -1438,40 +1615,58 @@ class ScorePopup {
     for (let i = 0; i < this.popups.length; i++) {
       const p = this.popups[i];
       const progress = p.time / p.duration;
-      // Alpha: hold for 30%, then linear fade
-      const alpha = progress < 0.35 ? 1.0 : Math.max(0, 1.0 - (progress - 0.35) / 0.65);
+      const isBullseye = p.tier === 'bullseye';
+      const isMaster = p.tier === 'master';
+
+      // Alpha: hold longer for bullseye
+      const holdTime = isBullseye ? 0.45 : 0.35;
+      const alpha = progress < holdTime ? 1.0 : Math.max(0, 1.0 - (progress - holdTime) / (1.0 - holdTime));
 
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(p.x, p.y);
 
-      // Scale pop on spawn
-      const scale = progress < 0.15 ? 0.8 + (progress / 0.15) * 0.25 : 1.0;
+      // Scale pop with elastic overshoot for bullseye
+      let scale = 1.0;
+      if (progress < 0.18) {
+        const t = progress / 0.18;
+        scale = isBullseye ? 0.6 + Math.sin(t * Math.PI * 0.75) * 0.6 : 0.8 + t * 0.25;
+      }
       ctx.scale(scale, scale);
 
-      // Subtle minimalist dark pill backing
-      const isHighTier = p.tier === 'bullseye' || p.tier === 'master';
-      ctx.font = isHighTier
+      ctx.font = isBullseye
+        ? '700 13px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        : isMaster
         ? '600 12px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         : '600 13px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
       const metrics = ctx.measureText(p.text);
-      const paddingX = 10;
+      const paddingX = isBullseye ? 14 : 10;
       const boxW = metrics.width + paddingX * 2;
-      const boxH = 22;
+      const boxH = isBullseye ? 26 : 22;
+
+      // Radiant gold glow for bullseye
+      if (isBullseye) {
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.75)';
+        ctx.shadowBlur = 18;
+      }
 
       // Clean pill background
-      ctx.fillStyle = 'rgba(24, 24, 27, 0.88)';
-      ctx.strokeStyle = isHighTier ? this.accentColor : 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1;
+      ctx.fillStyle = isBullseye ? '#18181b' : 'rgba(24, 24, 27, 0.88)';
+      ctx.strokeStyle = isBullseye ? '#fbbf24' : isMaster ? this.accentColor : 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = isBullseye ? 1.8 : 1;
 
       ctx.beginPath();
-      ctx.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, 11);
+      ctx.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, boxH / 2);
       ctx.fill();
       ctx.stroke();
 
+      // Reset shadow before drawing text
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
       // Typography
-      ctx.fillStyle = isHighTier ? this.accentColor : '#ffffff';
+      ctx.fillStyle = isBullseye ? '#fbbf24' : isMaster ? this.accentColor : '#ffffff';
       ctx.fillText(p.text, 0, 0.5);
 
       ctx.restore();
@@ -1550,6 +1745,10 @@ class ArrowShot {
     this.lastTime = 0;
     this.resetTimer = 0;
     this.rafId = null;
+
+    // Tactile screen micro-shake on bullseye hit
+    this.screenShake = 0;
+    this.screenShakeMagnitude = 0;
 
     // Pull tracking
     this.dragData = {
@@ -2060,21 +2259,29 @@ class ArrowShot {
     const impactSpeed = Math.hypot(this.projectile.vx, this.projectile.vy);
     this.target.hit(impactY, Math.max(12, impactSpeed));
 
-    // Emit minimalist micro-sparks leftward from impact face
-    this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
+    const isBullseye = hitResult.tier === 'bullseye';
 
-    // Spawn floating score pill
-    this.popups.spawn(this.target.x - 36, impactY, hitResult.score, hitResult.tier);
-
-    this.playSound('hit');
+    if (isBullseye) {
+      // Spectacular golden particle burst, dual shockwaves, and stars
+      this.particles.emitBullseyeBurst(impactX, impactY, this.projectile.angle);
+      this.target.triggerBullseyeFlash();
+      this.screenShake = 0.24;
+      this.screenShakeMagnitude = 4.8;
+      this.playSound('bullseye');
+      this.popups.spawn(this.target.x - 48, impactY, hitResult.score, 'bullseye');
+      this.resetTimer = 1.6;
+    } else {
+      // Standard kinetic micro-sparks leftward from impact face
+      this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
+      this.popups.spawn(this.target.x - 36, impactY, hitResult.score, hitResult.tier);
+      this.playSound('hit');
+      this.resetTimer = 1.45;
+    }
 
     // Callback notification
     if (typeof this.options.onHit === 'function') {
       this.options.onHit(hitResult.score, this.totalScore);
     }
-
-    // Schedule reset (allows full visual enjoyment of the pendulum swing)
-    this.resetTimer = 1.45;
   }
 
   /**
@@ -2152,6 +2359,22 @@ class ArrowShot {
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.36);
+    } else if (type === 'bullseye') {
+      // Celebratory multi-tone golden chime arpeggio
+      const notes = [587.33, 739.99, 880.00, 1174.66]; // D5, F#5, A5, D6 major triad
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        const start = now + idx * 0.055;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.22, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.46);
+      });
     } else if (type === 'miss') {
       // Dull floor thud
       const osc = ctx.createOscillator();
@@ -2191,6 +2414,11 @@ class ArrowShot {
       this.openProgress = Math.min(1, this.openProgress + dt / 0.45);
     } else if (!this.isOpen && this.openProgress > 0) {
       this.openProgress = Math.max(0, this.openProgress - dt / 0.35);
+    }
+
+    // Decay tactile screen shake
+    if (this.screenShake > 0) {
+      this.screenShake = Math.max(0, this.screenShake - dt);
     }
 
     this.bow.update(dt);
@@ -2306,6 +2534,17 @@ class ArrowShot {
       return;
     }
 
+    // Apply tactile screen micro-shake on bullseye impact
+    let shook = false;
+    if (this.screenShake > 0) {
+      shook = true;
+      const decay = this.screenShake / 0.24;
+      const sx = (Math.random() - 0.5) * 2 * this.screenShakeMagnitude * decay;
+      const sy = (Math.random() - 0.5) * 2 * this.screenShakeMagnitude * decay;
+      ctx.save();
+      ctx.translate(sx, sy);
+    }
+
     // 1. Target Board (Renders ceiling mount, suspension cord & swinging board)
     this.target.render(ctx);
 
@@ -2360,6 +2599,10 @@ class ArrowShot {
 
     // 5. FX Score Popups
     this.popups.render(ctx);
+
+    if (shook) {
+      ctx.restore();
+    }
   }
 
   /**
