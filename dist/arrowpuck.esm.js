@@ -1519,8 +1519,8 @@ class ArrowShot {
       airResistance: 1.0,
       autoOpen: false,
       showPrompt: true,
-      promptText: 'Sıkıldınız mı? 🎯',
-      closeText: '✕ Kapat',
+      promptText: 'Bored? 🎯',
+      closeText: '✕ Close',
       promptPosition: 'bottom-right',
       theme: {
         primaryColor: '#f59e0b',
@@ -1750,88 +1750,70 @@ class ArrowShot {
       const style = document.createElement('style');
       style.id = 'arrowshot-prompt-styles';
       style.textContent = `
-        @keyframes arrowshot-breathe {
-          0%, 100% {
-            transform: translateY(0) scale(1);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 14px rgba(245, 158, 11, 0.18);
-          }
-          50% {
-            transform: translateY(-2.5px) scale(1.025);
-            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 22px rgba(245, 158, 11, 0.32);
-          }
-        }
-        @keyframes arrowshot-dot-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.45; transform: scale(0.8); }
-        }
-        .arrowshot-prompt-btn {
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Inter:wght@400;500&display=swap');
+
+        .arrowshot-prompt-link {
           position: fixed;
           z-index: 100001;
           display: inline-flex;
-          align-items: center;
-          gap: 9px;
-          background: rgba(18, 18, 22, 0.90);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border: 1px solid rgba(245, 158, 11, 0.32);
-          border-radius: 9999px;
-          padding: 10px 18px;
-          color: #f4f4f5;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-          font-size: 13.5px;
-          font-weight: 500;
-          line-height: 1;
+          align-items: baseline;
+          gap: 6px;
+          background: transparent !important;
+          border: none !important;
+          padding: 6px 8px !important;
+          margin: 0;
+          box-shadow: none !important;
+          outline: none;
+          color: #a1a1aa;
           cursor: pointer;
           user-select: none;
           -webkit-user-select: none;
           touch-action: manipulation;
-          transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-                      border-color 0.22s ease,
-                      background-color 0.22s ease,
-                      box-shadow 0.22s ease;
-          animation: arrowshot-breathe 3.2s infinite ease-in-out;
+          text-decoration: none;
+          transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+          opacity: 0.85;
         }
-        .arrowshot-prompt-btn:hover {
-          border-color: rgba(245, 158, 11, 0.7);
-          background: rgba(24, 24, 30, 0.96);
-          transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.38);
-        }
-        .arrowshot-prompt-btn:active {
-          transform: translateY(0) scale(0.97);
-        }
-        .arrowshot-prompt-btn.is-active {
-          animation: none;
-          background: rgba(24, 24, 28, 0.88);
-          border-color: rgba(255, 255, 255, 0.16);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-          padding: 8px 14px;
-          font-size: 12.5px;
-          color: #a1a1aa;
-        }
-        .arrowshot-prompt-btn.is-active:hover {
-          border-color: rgba(239, 68, 68, 0.5);
+        .arrowshot-prompt-link:hover {
           color: #f4f4f5;
-          background: rgba(30, 24, 26, 0.94);
+          opacity: 1;
+          transform: translateY(-1.5px);
         }
-        .arrowshot-prompt-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #f59e0b;
-          box-shadow: 0 0 8px #f59e0b;
-          display: inline-block;
-          animation: arrowshot-dot-pulse 2s infinite ease-in-out;
-        }
-        .arrowshot-prompt-tag {
-          font-size: 11px;
-          color: #fbbf24;
-          background: rgba(245, 158, 11, 0.12);
-          border: 1px solid rgba(245, 158, 11, 0.28);
-          padding: 3px 8px;
-          border-radius: 9999px;
+        .arrowshot-prompt-text {
+          font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+          font-style: italic;
+          font-size: 16.5px;
+          font-weight: 400;
           letter-spacing: 0.02em;
-          font-weight: 600;
+          border-bottom: 1px dotted rgba(255, 255, 255, 0.3);
+          padding-bottom: 2px;
+          transition: border-color 0.2s ease, color 0.2s ease;
+        }
+        .arrowshot-prompt-link:hover .arrowshot-prompt-text {
+          border-bottom-color: rgba(245, 158, 11, 0.75);
+          color: #ffffff;
+        }
+        .arrowshot-prompt-emoji {
+          font-size: 15px;
+          font-style: normal;
+          display: inline-block;
+          transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .arrowshot-prompt-link:hover .arrowshot-prompt-emoji {
+          transform: scale(1.2) rotate(12deg);
+        }
+        .arrowshot-prompt-close {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #71717a;
+          letter-spacing: 0.02em;
+          transition: color 0.2s ease, border-color 0.2s ease;
+          border-bottom: 1px dotted transparent;
+          padding-bottom: 1px;
+        }
+        .arrowshot-prompt-link:hover .arrowshot-prompt-close {
+          color: #e4e4e7;
+          border-bottom-color: rgba(255, 255, 255, 0.4);
         }
       `;
       document.head.appendChild(style);
@@ -1839,7 +1821,7 @@ class ArrowShot {
 
     this.promptBtn = document.createElement('button');
     this.promptBtn.id = 'arrowshot-prompt';
-    this.promptBtn.className = 'arrowshot-prompt-btn' + (this.isOpen ? ' is-active' : '');
+    this.promptBtn.className = 'arrowshot-prompt-link' + (this.isOpen ? ' is-active' : '');
 
     // Positioning
     const pos = this.options.promptPosition;
@@ -1885,20 +1867,26 @@ class ArrowShot {
     if (this.isOpen) {
       this.promptBtn.classList.add('is-active');
       this.promptBtn.innerHTML = `
-        <span style="font-size: 12px; opacity: 0.75;">✕</span>
-        <span>${this.options.closeText}</span>
+        <span class="arrowshot-prompt-close">${this.options.closeText}</span>
       `;
       this.promptBtn.setAttribute('aria-label', this.options.closeText);
-      this.promptBtn.title = 'Oyunu kapat';
+      this.promptBtn.title = 'Close interactive target';
     } else {
       this.promptBtn.classList.remove('is-active');
-      this.promptBtn.innerHTML = `
-        <span class="arrowshot-prompt-dot"></span>
-        <span>${this.options.promptText}</span>
-        <span class="arrowshot-prompt-tag">Ok At</span>
-      `;
-      this.promptBtn.setAttribute('aria-label', this.options.promptText);
-      this.promptBtn.title = 'Oyunu başlat';
+      const text = this.options.promptText || 'Bored? 🎯';
+      const emojiMatch = text.match(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u);
+      if (emojiMatch) {
+        const emoji = emojiMatch[0];
+        const label = text.replace(emoji, '').trim();
+        this.promptBtn.innerHTML = `
+          <span class="arrowshot-prompt-text">${label}</span>
+          <span class="arrowshot-prompt-emoji">${emoji}</span>
+        `;
+      } else {
+        this.promptBtn.innerHTML = `<span class="arrowshot-prompt-text">${text}</span>`;
+      }
+      this.promptBtn.setAttribute('aria-label', text);
+      this.promptBtn.title = 'Click to drop archery target';
     }
   }
 

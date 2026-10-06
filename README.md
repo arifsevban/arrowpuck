@@ -77,10 +77,10 @@ Pass a configuration object to `new ArrowPuck(options)`:
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `mountTarget` | HTMLElement | `document.body` | DOM container element where the fixed canvas is appended. |
-| `autoOpen` | boolean | `false` | When false, widget remains parked until visitor clicks the floating prompt pill. |
-| `showPrompt` | boolean | `true` | Renders a stylish floating prompt pill button on the page. |
-| `promptText` | string | `'Sıkıldınız mı?'` | Text displayed inside the floating prompt pill before opening. |
-| `closeText` | string | `'✕ Kapat'` | Text displayed inside the toggle button while active to close or minimize. |
+| `autoOpen` | boolean | `false` | When false, widget remains parked until visitor clicks the floating prompt text. |
+| `showPrompt` | boolean | `true` | Renders a subtle floating typographic prompt text on the page. |
+| `promptText` | string | `'Bored?'` | Text displayed inside the floating prompt link before opening. |
+| `closeText` | string | `'✕ Close'` | Text displayed inside the toggle link while active to close or minimize. |
 | `promptPosition` | string \| object | `'bottom-right'` | Position of prompt button (`'bottom-right'`, `'bottom-left'`, `'top-right'`, `'top-left'`, or object `{ bottom, right }`). |
 | `bowPosition` | string \| object | `'bottom-left'` | Launcher placement. Accepts `'bottom-left'`, `'bottom-right'`, or `{ x, y }`. |
 | `targetPosition` | string \| object | `'top-right'` | Target placement. Accepts `'top-right'`, `'top-left'`, or `{ x, y }`. |
