@@ -643,3 +643,11 @@ export class ArrowShot {
     if (this.audioCtx) this.audioCtx.close();
   }
 }
+
+// Auto-register to window in browser environments for direct CDN/script-tag usage
+if (typeof window !== 'undefined') {
+  window.ArrowShot = ArrowShot;
+  window.ArrowPuck = ArrowShot;
+}
+
+export default ArrowShot;

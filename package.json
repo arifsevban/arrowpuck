@@ -1,11 +1,26 @@
 {
-  "name": "arrow-shot",
+  "name": "arrow-puck",
   "version": "1.0.0",
   "description": "Non-intrusive interactive easter egg micro-widget with zero dependencies",
   "type": "module",
+  "main": "dist/arrowpuck.min.js",
+  "module": "dist/arrowpuck.esm.js",
+  "unpkg": "dist/arrowpuck.min.js",
+  "jsdelivr": "dist/arrowpuck.min.js",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/arrowpuck.esm.js",
+      "require": "./dist/arrowpuck.min.js",
+      "default": "./dist/arrowpuck.min.js"
+    }
+  },
   "scripts": {
-    "start": "npx -y serve . -l 3000",
-    "dev": "npx -y serve . -l 3000"
+    "build": "rollup -c",
+    "dev": "node serve.js",
+    "test": "node tests/test_physics_collision.js"
   },
   "keywords": [
     "widget",
@@ -13,8 +28,18 @@
     "easter-egg",
     "vanilla-js",
     "interactive",
-    "physics"
+    "physics",
+    "game",
+    "arrow"
   ],
   "author": "Arif Sevban",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arifsevban/arrow-puck.git"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.34.8"
+  }
 }

@@ -480,20 +480,22 @@
     <!-- Code Snippet Demonstration -->
     <div class="snippet-box">
       <div class="snippet-header">
-        <span class="snippet-title">Hızlı Entegrasyon (Vanilla ES6)</span>
+        <span class="snippet-title">CDN Hızlı Kurulum (&lt;script&gt; Tag)</span>
         <button class="copy-btn" id="btn-copy-code">Kodu Kopyala</button>
       </div>
-      <pre><code><span class="code-keyword">import</span> { ArrowShot } <span class="code-keyword">from</span> <span class="code-string">'./src/ArrowShot.js'</span>;
+      <pre><code><span class="code-comment">&lt;!-- 1. Standalone Minified Bundle (CDN / UNPKG / JSDelivr) --&gt;</span>
+<span class="code-keyword">&lt;script</span> <span class="code-fn">src</span>=<span class="code-string">"./dist/arrowpuck.min.js"</span><span class="code-keyword">&gt;&lt;/script&gt;</span>
 
-<span class="code-keyword">const</span> widget = <span class="code-keyword">new</span> <span class="code-fn">ArrowShot</span>({
-  bowPosition: <span class="code-string">'bottom-left'</span>,
-  targetPosition: <span class="code-string">'top-right'</span>,
-  gravity: <span class="code-string">0.42</span>,
-  powerMultiplier: <span class="code-string">0.22</span>,
-  maxDragRadius: <span class="code-string">90</span>,
-  enableTrajectory: <span class="code-keyword">true</span>,
-  onHit: (score, total) => console.log(<span class="code-string">`Hit! Score: ${score}`</span>)
-});</code></pre>
+<span class="code-comment">&lt;!-- 2. Doğrudan Başlatma (window.ArrowPuck veya window.ArrowShot) --&gt;</span>
+<span class="code-keyword">&lt;script&gt;</span>
+  <span class="code-keyword">const</span> widget = <span class="code-keyword">new</span> <span class="code-fn">ArrowPuck</span>({
+    bowPosition: <span class="code-string">'bottom-left'</span>,
+    targetPosition: <span class="code-string">'top-right'</span>,
+    gravity: <span class="code-string">0.42</span>,
+    powerMultiplier: <span class="code-string">0.22</span>,
+    onHit: (score, total) =&gt; console.log(<span class="code-string">`Hit: ${score} | Total: ${total}`</span>)
+  });
+<span class="code-keyword">&lt;/script&gt;</span></code></pre>
     </div>
   </main>
 
@@ -510,14 +512,14 @@
 
   <div id="test-toast"></div>
 
-  <!-- ArrowShot Integration Script -->
-  <script type="module">
-    import { ArrowShot } from './src/ArrowShot.js';
+  <!-- ArrowPuck Standalone UMD / Minified Bundle (Simulating CDN: https://cdn.jsdelivr.net/npm/arrow-puck/dist/arrowpuck.min.js) -->
+  <script src="./dist/arrowpuck.min.js"></script>
 
+  <script>
     let soundActive = false;
 
-    // Instantiate ArrowShot with strict GDD Section 8 options
-    const widget = new ArrowShot({
+    // ArrowPuck is loaded globally from dist/arrowpuck.min.js
+    const widget = new ArrowPuck({
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
       gravity: 0.42,
@@ -588,8 +590,9 @@
     });
 
     document.getElementById('btn-copy-code')?.addEventListener('click', () => {
-      navigator.clipboard?.writeText(`import { ArrowShot } from './src/ArrowShot.js';\nnew ArrowShot();`);
-      showToast('Kod panoya kopyalandı!');
+      const snippet = `<script src="https://cdn.jsdelivr.net/npm/arrow-puck/dist/arrowpuck.min.js"><\/script>\n<script>\n  new ArrowPuck();\n<\/script>`;
+      navigator.clipboard?.writeText(snippet);
+      showToast('CDN kodu panoya kopyalandı!');
     });
 
     // Global toast helper for UI verification
