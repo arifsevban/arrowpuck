@@ -191,14 +191,14 @@ export class ArrowShot {
           return { x: marginX, y: this.height - marginY };
       }
     } else {
-      // Side-profile target board mounted on the right screen border
-      const marginFromEdge = 34; // Board front face sits 34px from right border
+      // Suspended side-profile target board hanging from the ceiling (not glued to edge)
+      const marginFromEdge = Math.max(100, Math.min(160, this.width * 0.12));
       const boardX = this.width - marginFromEdge;
-      const boardY = Math.max(130, Math.min(this.height * 0.36, this.height - 150));
+      const boardY = Math.max(160, Math.min(this.height * 0.38, this.height - 180));
 
       switch (posConfig) {
         case 'top-left':
-          return { x: 34, y: boardY };
+          return { x: marginFromEdge, y: boardY };
         case 'top-right':
         default:
           return { x: boardX, y: boardY };
@@ -354,12 +354,16 @@ export class ArrowShot {
     const impactX = hitResult.impactX ?? this.projectile.x;
     const impactY = hitResult.impactY ?? this.projectile.y;
 
+    // Record relative coordinate on target board for swinging follow
+    this.stuckRelY = impactY - this.target.y;
+    this.stuckBaseAngle = this.projectile.angle;
+
     // Stick arrow into front face of target
     this.projectile.stick(impactX, impactY, this.projectile.angle);
 
-    // Recoil shake on target board
+    // Trigger physical pendulum swing on suspended target
     const impactSpeed = Math.hypot(this.projectile.vx, this.projectile.vy);
-    this.target.hit(impactY, Math.max(10, impactSpeed * 0.8));
+    this.target.hit(impactY, Math.max(12, impactSpeed));
 
     // Emit minimalist micro-sparks leftward from impact face
     this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
@@ -374,8 +378,8 @@ export class ArrowShot {
       this.options.onHit(hitResult.score, this.totalScore);
     }
 
-    // Schedule reset
-    this.resetTimer = 1.3;
+    // Schedule reset (allows full visual enjoyment of the pendulum swing)
+    this.resetTimer = 1.45;
   }
 
   /**
@@ -400,6 +404,7 @@ export class ArrowShot {
    */
   resetCycle() {
     this.state = GameState.IDLE;
+    this.stuckRelY = null;
     this.projectile.resetToIdle(this.bowPos.x, this.bowPos.y, -Math.PI / 4);
     this.triggerZone.style.pointerEvents = 'auto';
   }
@@ -523,7 +528,22 @@ export class ArrowShot {
         this.onMiss();
         return;
       }
-    } else if (this.state === GameState.HIT || this.state === GameState.MISS) {
+    } else if (this.state === GameState.HIT) {
+      this.projectile.update(this.options.gravity, this.options.airResistance, dt);
+
+      // Embedded arrow swings and tilts in unison with the suspended board
+      if (typeof this.stuckRelY === 'number') {
+        const worldCoords = this.target.toWorldCoords(0, this.stuckRelY);
+        this.projectile.x = worldCoords.x;
+        this.projectile.y = worldCoords.y;
+        this.projectile.angle = this.stuckBaseAngle + worldCoords.angleDelta;
+      }
+
+      this.resetTimer -= dt;
+      if (this.resetTimer <= 0) {
+        this.resetCycle();
+      }
+    } else if (this.state === GameState.MISS) {
       this.projectile.update(this.options.gravity, this.options.airResistance, dt);
       this.resetTimer -= dt;
       if (this.resetTimer <= 0) {
@@ -593,14 +613,13 @@ export class ArrowShot {
     // 2. Trajectory prediction dots
     this.renderTrajectory();
 
-    // 3. Arrow Projectile
-    if (this.state === GameState.HIT) {
-      this.projectile.render(ctx, this.target.offsetX, this.target.offsetY);
-    } else {
-      this.projectile.render(ctx);
-    }
+    // 3. Target Board (Renders ceiling mount, suspension cord & swinging board)
+    this.target.render(ctx);
 
-    // 4. Front layer of bow (recurve limbs, riser grip, arrow shelf)
+    // 4. Arrow Projectile
+    this.projectile.render(ctx);
+
+    // 5. Front layer of bow (recurve limbs, riser grip, arrow shelf)
     this.bow.renderFront(
       ctx,
       isAiming,
@@ -608,9 +627,6 @@ export class ArrowShot {
       this.dragData.dragY,
       this.dragData.ratio
     );
-
-    // 5. Target Board
-    this.target.render(ctx);
 
     // 6. FX Micro-Sparks
     this.particles.render(ctx);

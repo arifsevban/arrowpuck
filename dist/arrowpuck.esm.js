@@ -787,9 +787,9 @@ class Projectile {
 }
 
 /**
- * Target.js - Precision Wall-Mounted Archery Target Board (Side Profile)
- * Features 5 graded difficulty intervals without cluttered numbers,
- * ambient drop-shadow depth, multi-layer composite core, and crisp caliper markings.
+ * Target.js - Suspended Archery Target Board (Side Profile)
+ * Suspended from the top of the screen via a precision cable.
+ * Swings dynamically like a damped pendulum based on arrow impact speed and hit height.
  */
 
 
@@ -812,6 +812,8 @@ class Target {
     this.theme = {
       accent: theme.primaryColor || '#f59e0b',
       accentBright: '#fbbf24',
+      cable: 'rgba(161, 161, 170, 0.75)',
+      cableMount: '#3f3f46',
       backplate: '#18181b',
       backplateBorder: '#3f3f46',
       zone5: '#1c1c23', // Outer edge (25 pts)
@@ -823,21 +825,25 @@ class Target {
       ...theme
     };
 
-    // Elastic shake and recoil state
+    // Pendulum swing and rotational tilt state
     this.isShaking = false;
-    this.shakeTime = 0;
-    this.shakeDuration = 0.55;
-    this.recoilIntensity = 0;
-    this.tiltIntensity = 0;
+    this.swingTime = 0;
+    this.swingDuration = 1.3;
+    this.swayAmplitude = 0;
+    this.tiltAmplitude = 0;
 
-    // Current animated offsets
+    // Current dynamic animated offsets
+    this.swayX = 0;
+    this.swayY = 0;
+    this.tilt = 0;
+
+    // Aliases for compatibility
     this.offsetX = 0;
     this.offsetY = 0;
-    this.tilt = 0;
   }
 
   /**
-   * Updates target position on resize.
+   * Updates target base position on window resize.
    */
   setPosition(x, y) {
     this.x = x;
@@ -845,218 +851,271 @@ class Target {
   }
 
   /**
-   * Triggers elastic recoil when struck by an arrow.
+   * Triggers physical pendulum swing when struck by an arrow.
+   * Lever arm increases with distance from the top suspension point.
+   * 
+   * @param {number} impactY - Vertical coordinate where arrow struck
+   * @param {number} [impactSpeed=16] - Speed of the arrow at collision
    */
-  hit(impactY, impactSpeed = 15) {
+  hit(impactY, impactSpeed = 16) {
     this.isShaking = true;
-    this.shakeTime = 0;
-    this.recoilIntensity = Math.min(Math.max(10, impactSpeed * 0.75), 20);
+    this.swingTime = 0;
 
-    // Tilt based on vertical distance from center
-    const distFromCenter = impactY - this.y;
-    this.tiltIntensity = MathUtils.clamp(distFromCenter / this.halfHeight, -1, 1) * 0.09;
+    // Linear horizontal pendulum impulse
+    this.swayAmplitude = Math.min(34, impactSpeed * 1.55);
+
+    // Lever arm from top suspension eyelet (0 at top, 250 at bottom)
+    const topY = this.y - this.halfHeight;
+    const leverArm = Math.max(10, impactY - topY);
+
+    // Angular tilt torque: hits near bottom kick out dramatically
+    const normalizedLever = leverArm / this.height; // [0.04, 1.0]
+    this.tiltAmplitude = normalizedLever * (impactSpeed / 14) * 0.24;
   }
 
   /**
-   * Per-frame recoil integration.
+   * Per-frame physics integration for pendulum swing and angular oscillation.
+   * @param {number} dt - Delta time in seconds
    */
   update(dt = 0.016) {
     if (!this.isShaking) {
+      this.swayX = 0;
+      this.swayY = 0;
+      this.tilt = 0;
       this.offsetX = 0;
       this.offsetY = 0;
-      this.tilt = 0;
       return;
     }
 
-    this.shakeTime += dt;
+    this.swingTime += dt;
 
-    if (this.shakeTime >= this.shakeDuration) {
+    if (this.swingTime >= this.swingDuration) {
       this.isShaking = false;
+      this.swayX = 0;
+      this.swayY = 0;
+      this.tilt = 0;
       this.offsetX = 0;
       this.offsetY = 0;
-      this.tilt = 0;
       return;
     }
 
-    // Damped harmonic decay: recoil pushes into the wall (+X)
-    const decay = Math.exp(-9 * this.shakeTime);
-    const oscillation = Math.cos(32 * this.shakeTime);
+    // 1. Damped horizontal pendulum sway of the suspension point
+    const swayDecay = Math.exp(-2.5 * this.swingTime);
+    const swayWave = Math.sin(5.6 * this.swingTime);
+    this.swayX = this.swayAmplitude * swayDecay * swayWave;
+    // Slight upward circular arc lift as pendulum sways
+    this.swayY = -Math.abs(this.swayX) * 0.06;
 
-    this.offsetX = this.recoilIntensity * decay * oscillation;
-    this.tilt = this.tiltIntensity * decay * oscillation;
+    // 2. Damped rotational tilt oscillation around the suspension pivot
+    const tiltDecay = Math.exp(-3.4 * this.swingTime);
+    const tiltWave = Math.cos(9.8 * this.swingTime);
+    this.tilt = this.tiltAmplitude * tiltDecay * tiltWave;
+
+    this.offsetX = this.swayX;
+    this.offsetY = this.swayY;
   }
 
   /**
-   * Renders the distinct side-profile archery target board.
+   * Returns top suspension eyelet world coordinates.
+   */
+  getPivot() {
+    return {
+      x: this.x + this.width / 2 + this.swayX,
+      y: this.y - this.halfHeight + this.swayY
+    };
+  }
+
+  /**
+   * Converts local board coordinates (relX from front face, relY from center)
+   * to world coordinates accounting for swing and tilt.
+   */
+  toWorldCoords(localX, localY) {
+    const pivot = this.getPivot();
+    // In local space, pivot is at (width / 2, 0) relative to board top
+    const fromPivotX = localX - this.width / 2;
+    const fromPivotY = localY + this.halfHeight;
+
+    const cosT = Math.cos(this.tilt);
+    const sinT = Math.sin(this.tilt);
+
+    return {
+      x: pivot.x + fromPivotX * cosT - fromPivotY * sinT,
+      y: pivot.y + fromPivotX * sinT + fromPivotY * cosT,
+      angleDelta: this.tilt
+    };
+  }
+
+  /**
+   * Renders the suspended target board, ceiling mount, and suspension cord.
    * @param {CanvasRenderingContext2D} ctx
    */
   render(ctx) {
     ctx.save();
 
-    const baseX = this.x + this.offsetX;
-    const baseY = this.y + this.offsetY;
-    const H = this.halfHeight;
+    const pivot = this.getPivot();
+    const ceilingX = this.x + this.width / 2;
     const W = this.width;
+    const H = this.halfHeight;
 
-    ctx.translate(baseX, baseY);
+    // 1. Ceiling Mount Fixture at top of screen (y = 0)
+    ctx.fillStyle = this.theme.cableMount;
+    ctx.fillRect(ceilingX - 10, 0, 20, 5);
+    ctx.strokeStyle = '#52525b';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ceilingX - 10, 0, 20, 5);
+
+    // Ceiling eyelet loop
+    ctx.beginPath();
+    ctx.arc(ceilingX, 7, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#71717a';
+    ctx.fill();
+
+    // 2. Precision High-Tensile Suspension Cable (Ceiling -> Moving Top Pivot)
+    ctx.beginPath();
+    ctx.moveTo(ceilingX, 7);
+    ctx.lineTo(pivot.x, pivot.y);
+    ctx.strokeStyle = this.theme.cable;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // 3. Render Suspended Target Board (Rotated around Pivot)
+    ctx.save();
+    ctx.translate(pivot.x, pivot.y);
     ctx.rotate(this.tilt);
 
-    // 1. Subtle Ambient Drop Shadow (lifts board off background page)
+    // Ambient drop shadow under board
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetX = -5;
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = -6;
 
-    // Solid Wall Backing Plate (extends slightly above & below)
-    const plateExtra = 8;
-    ctx.fillStyle = this.theme.backplate;
+    // Top Eyebolt & Collar
+    ctx.fillStyle = '#71717a';
     ctx.beginPath();
-    ctx.roundRect(W - 4, -H - plateExtra, 12, this.height + plateExtra * 2, [0, 4, 4, 0]);
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3f3f46';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Board Base Frame (-W/2 to W/2, 0 to 2H)
+    ctx.fillStyle = '#141418';
+    ctx.beginPath();
+    ctx.roundRect(-W / 2, 4, W, this.height, [3, 3, 3, 3]);
     ctx.fill();
     ctx.restore();
 
     ctx.strokeStyle = this.theme.backplateBorder;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.roundRect(W - 4, -H - plateExtra, 12, this.height + plateExtra * 2, [0, 4, 4, 0]);
-    ctx.stroke();
-
-    // Rivet screws on wall mount
-    ctx.fillStyle = '#71717a';
-    ctx.beginPath();
-    ctx.arc(W + 2, -H + 4, 2.2, 0, Math.PI * 2);
-    ctx.arc(W + 2, H - 4, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Target Board Composite Core Base
-    ctx.fillStyle = '#141418';
-    ctx.beginPath();
-    ctx.roundRect(0, -H, W, this.height, [4, 0, 0, 4]);
-    ctx.fill();
-    ctx.strokeStyle = this.theme.backplateBorder;
     ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.roundRect(-W / 2, 4, W, this.height, [3, 3, 3, 3]);
     ctx.stroke();
 
-    // 3. 5 Graded Scoring Intervals (Increased challenge and precision)
+    // 4. 5 Graded Scoring Intervals (Shifted by H + 4 so center is at H + 4)
+    const centerY = H + 4;
     const z1 = 8;  // Razor Bullseye (500 pts, 16px span)
     const z2 = 22; // Inner Master   (300 pts, 44px span)
     const z3 = 48; // Middle High    (150 pts, 96px span)
     const z4 = 84; // Mid-Outer      (75 pts, 168px span)
-    // z5 extends to H = 125 (25 pts, 250px span)
+    const z5 = H;  // Outer Edge     (25 pts, 250px span)
+
+    const boardLeft = -W / 2 + 1;
+    const boardW = W - 2;
 
     // --- Zone 5: Outer Edge (Top & Bottom ends) ---
     ctx.fillStyle = this.theme.zone5;
-    ctx.fillRect(1, -H + 1, W - 2, H - z4);
-    ctx.fillRect(1, z4, W - 2, H - z4 - 1);
+    ctx.fillRect(boardLeft, centerY - z5, boardW, z5 - z4);
+    ctx.fillRect(boardLeft, centerY + z4, boardW, z5 - z4);
 
     // --- Zone 4: Mid-Outer Zones ---
     ctx.fillStyle = this.theme.zone4;
-    ctx.fillRect(1, -z4, W - 2, z4 - z3);
-    ctx.fillRect(1, z3, W - 2, z4 - z3);
+    ctx.fillRect(boardLeft, centerY - z4, boardW, z4 - z3);
+    ctx.fillRect(boardLeft, centerY + z3, boardW, z4 - z3);
 
     // --- Zone 3: Middle High Zones ---
     ctx.fillStyle = this.theme.zone3;
-    ctx.fillRect(1, -z3, W - 2, z3 - z2);
-    ctx.fillRect(1, z2, W - 2, z3 - z2);
+    ctx.fillRect(boardLeft, centerY - z3, boardW, z3 - z2);
+    ctx.fillRect(boardLeft, centerY + z2, boardW, z3 - z2);
 
-    // --- Zone 2: Inner Master Zones (Warm brass accent tint) ---
+    // --- Zone 2: Inner Master Zones (Warm brass accent) ---
     ctx.fillStyle = this.theme.zone2;
-    ctx.fillRect(1, -z2, W - 2, z2 - z1);
-    ctx.fillRect(1, z1, W - 2, z2 - z1);
+    ctx.fillRect(boardLeft, centerY - z2, boardW, z2 - z1);
+    ctx.fillRect(boardLeft, centerY + z1, boardW, z2 - z1);
 
     // --- Zone 1: Razor Bullseye Core (Pure gold / amber) ---
     ctx.fillStyle = this.theme.zone1;
-    ctx.fillRect(1, -z1, W - 2, z1 * 2);
+    ctx.fillRect(boardLeft, centerY - z1, boardW, z1 * 2);
 
-    // 4. Boundary Dividers between score zones
+    // 5. Boundary Dividers between score zones
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
-    // Zone 4 boundaries
-    ctx.moveTo(0, -z4);
-    ctx.lineTo(W, -z4);
-    ctx.moveTo(0, z4);
-    ctx.lineTo(W, z4);
-    // Zone 3 boundaries
-    ctx.moveTo(0, -z3);
-    ctx.lineTo(W, -z3);
-    ctx.moveTo(0, z3);
-    ctx.lineTo(W, z3);
-    // Zone 2 boundaries
-    ctx.moveTo(0, -z2);
-    ctx.lineTo(W, -z2);
-    ctx.moveTo(0, z2);
-    ctx.lineTo(W, z2);
-    // Zone 1 Bullseye boundaries
-    ctx.moveTo(0, -z1);
-    ctx.lineTo(W, -z1);
-    ctx.moveTo(0, z1);
-    ctx.lineTo(W, z1);
+    ctx.moveTo(boardLeft, centerY - z4); ctx.lineTo(boardLeft + boardW, centerY - z4);
+    ctx.moveTo(boardLeft, centerY + z4); ctx.lineTo(boardLeft + boardW, centerY + z4);
+    ctx.moveTo(boardLeft, centerY - z3); ctx.lineTo(boardLeft + boardW, centerY - z3);
+    ctx.moveTo(boardLeft, centerY + z3); ctx.lineTo(boardLeft + boardW, centerY + z3);
+    ctx.moveTo(boardLeft, centerY - z2); ctx.lineTo(boardLeft + boardW, centerY - z2);
+    ctx.moveTo(boardLeft, centerY + z2); ctx.lineTo(boardLeft + boardW, centerY + z2);
+    ctx.moveTo(boardLeft, centerY - z1); ctx.lineTo(boardLeft + boardW, centerY - z1);
+    ctx.moveTo(boardLeft, centerY + z1); ctx.lineTo(boardLeft + boardW, centerY + z1);
     ctx.stroke();
 
-    // 5. Front Strike Face Contrast Edges
+    // 6. Front Strike Face Contrast Edge Lines (at -W/2)
+    const strikeX = -W / 2;
     ctx.lineWidth = 2.4;
-    // Zone 5 edges
+
+    // Zone 5
     ctx.strokeStyle = '#3f3f46';
     ctx.beginPath();
-    ctx.moveTo(0, -H);
-    ctx.lineTo(0, -z4);
-    ctx.moveTo(0, z4);
-    ctx.lineTo(0, H);
+    ctx.moveTo(strikeX, centerY - z5); ctx.lineTo(strikeX, centerY - z4);
+    ctx.moveTo(strikeX, centerY + z4); ctx.lineTo(strikeX, centerY + z5);
     ctx.stroke();
 
-    // Zone 4 edges
+    // Zone 4
     ctx.strokeStyle = '#52525b';
     ctx.beginPath();
-    ctx.moveTo(0, -z4);
-    ctx.lineTo(0, -z3);
-    ctx.moveTo(0, z3);
-    ctx.lineTo(0, z4);
+    ctx.moveTo(strikeX, centerY - z4); ctx.lineTo(strikeX, centerY - z3);
+    ctx.moveTo(strikeX, centerY + z3); ctx.lineTo(strikeX, centerY + z4);
     ctx.stroke();
 
-    // Zone 3 edges
+    // Zone 3
     ctx.strokeStyle = '#71717a';
     ctx.beginPath();
-    ctx.moveTo(0, -z3);
-    ctx.lineTo(0, -z2);
-    ctx.moveTo(0, z2);
-    ctx.lineTo(0, z3);
+    ctx.moveTo(strikeX, centerY - z3); ctx.lineTo(strikeX, centerY - z2);
+    ctx.moveTo(strikeX, centerY + z2); ctx.lineTo(strikeX, centerY + z3);
     ctx.stroke();
 
-    // Zone 2 edges
+    // Zone 2
     ctx.strokeStyle = '#d4d4d8';
     ctx.beginPath();
-    ctx.moveTo(0, -z2);
-    ctx.lineTo(0, -z1);
-    ctx.moveTo(0, z1);
-    ctx.lineTo(0, z2);
+    ctx.moveTo(strikeX, centerY - z2); ctx.lineTo(strikeX, centerY - z1);
+    ctx.moveTo(strikeX, centerY + z1); ctx.lineTo(strikeX, centerY + z2);
     ctx.stroke();
 
-    // Zone 1 Bullseye edge
+    // Zone 1 (Bullseye)
     ctx.strokeStyle = this.theme.accentBright;
     ctx.beginPath();
-    ctx.moveTo(0, -z1);
-    ctx.lineTo(0, z1);
+    ctx.moveTo(strikeX, centerY - z1); ctx.lineTo(strikeX, centerY + z1);
     ctx.stroke();
 
-    // 6. Strike Face Caliper Ticks (Engineered tick marks without numbers)
+    // 7. Strike Face Caliper Ticks
     ctx.strokeStyle = this.theme.ticks;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    const tickStep = 8;
-    for (let y = -H + 8; y <= H - 8; y += tickStep) {
-      const isMajor = Math.abs(y) === z4 || Math.abs(y) === z3 || Math.abs(y) === z2 || Math.abs(y) === z1 || y === 0;
+    for (let y = centerY - z5 + 8; y <= centerY + z5 - 8; y += 8) {
+      const relY = Math.abs(y - centerY);
+      const isMajor = relY === z4 || relY === z3 || relY === z2 || relY === z1 || relY === 0;
       const len = isMajor ? 6.5 : 3.0;
-      ctx.moveTo(0, y);
-      ctx.lineTo(len, y);
+      ctx.moveTo(strikeX, y);
+      ctx.lineTo(strikeX + len, y);
     }
     ctx.stroke();
 
-    // 7. Center Indicator Notch on Left Face (Points directly at the bullseye)
+    // 8. Center Indicator Notch on Left Face (Points directly at the bullseye)
     ctx.beginPath();
-    ctx.moveTo(-7, 0);
-    ctx.lineTo(-1.5, -4.5);
-    ctx.lineTo(-1.5, 4.5);
+    ctx.moveTo(strikeX - 7, centerY);
+    ctx.lineTo(strikeX - 1.5, centerY - 4.5);
+    ctx.lineTo(strikeX - 1.5, centerY + 4.5);
     ctx.closePath();
     ctx.fillStyle = this.theme.accentBright;
     ctx.fill();
@@ -1064,16 +1123,18 @@ class Target {
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    // 8. Top & Bottom Machined Metal End Caps
+    // 9. Top & Bottom Machined Metal End Caps
     ctx.fillStyle = this.theme.backplateBorder;
-    ctx.fillRect(0, -H, W, 2.5);
-    ctx.fillRect(0, H - 2.5, W, 2.5);
+    ctx.fillRect(strikeX, 4, W, 2.5);
+    ctx.fillRect(strikeX, 4 + this.height - 2.5, W, 2.5);
 
-    // Corner accent dots on caps
-    ctx.fillStyle = this.theme.accent;
-    ctx.fillRect(0, -H, 2.5, 2.5);
-    ctx.fillRect(0, H - 2.5, 2.5, 2.5);
+    // Bottom Brass Ballast Weight Ring (adds visual pendulum realism)
+    ctx.fillStyle = '#71717a';
+    ctx.beginPath();
+    ctx.arc(0, 4 + this.height + 3, 3.5, 0, Math.PI * 2);
+    ctx.fill();
 
+    ctx.restore();
     ctx.restore();
   }
 }
@@ -1520,14 +1581,14 @@ class ArrowShot {
           return { x: marginX, y: this.height - marginY };
       }
     } else {
-      // Side-profile target board mounted on the right screen border
-      const marginFromEdge = 34; // Board front face sits 34px from right border
+      // Suspended side-profile target board hanging from the ceiling (not glued to edge)
+      const marginFromEdge = Math.max(100, Math.min(160, this.width * 0.12));
       const boardX = this.width - marginFromEdge;
-      const boardY = Math.max(130, Math.min(this.height * 0.36, this.height - 150));
+      const boardY = Math.max(160, Math.min(this.height * 0.38, this.height - 180));
 
       switch (posConfig) {
         case 'top-left':
-          return { x: 34, y: boardY };
+          return { x: marginFromEdge, y: boardY };
         case 'top-right':
         default:
           return { x: boardX, y: boardY };
@@ -1683,12 +1744,16 @@ class ArrowShot {
     const impactX = hitResult.impactX ?? this.projectile.x;
     const impactY = hitResult.impactY ?? this.projectile.y;
 
+    // Record relative coordinate on target board for swinging follow
+    this.stuckRelY = impactY - this.target.y;
+    this.stuckBaseAngle = this.projectile.angle;
+
     // Stick arrow into front face of target
     this.projectile.stick(impactX, impactY, this.projectile.angle);
 
-    // Recoil shake on target board
+    // Trigger physical pendulum swing on suspended target
     const impactSpeed = Math.hypot(this.projectile.vx, this.projectile.vy);
-    this.target.hit(impactY, Math.max(10, impactSpeed * 0.8));
+    this.target.hit(impactY, Math.max(12, impactSpeed));
 
     // Emit minimalist micro-sparks leftward from impact face
     this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
@@ -1703,8 +1768,8 @@ class ArrowShot {
       this.options.onHit(hitResult.score, this.totalScore);
     }
 
-    // Schedule reset
-    this.resetTimer = 1.3;
+    // Schedule reset (allows full visual enjoyment of the pendulum swing)
+    this.resetTimer = 1.45;
   }
 
   /**
@@ -1729,6 +1794,7 @@ class ArrowShot {
    */
   resetCycle() {
     this.state = GameState.IDLE;
+    this.stuckRelY = null;
     this.projectile.resetToIdle(this.bowPos.x, this.bowPos.y, -Math.PI / 4);
     this.triggerZone.style.pointerEvents = 'auto';
   }
@@ -1852,7 +1918,22 @@ class ArrowShot {
         this.onMiss();
         return;
       }
-    } else if (this.state === GameState.HIT || this.state === GameState.MISS) {
+    } else if (this.state === GameState.HIT) {
+      this.projectile.update(this.options.gravity, this.options.airResistance, dt);
+
+      // Embedded arrow swings and tilts in unison with the suspended board
+      if (typeof this.stuckRelY === 'number') {
+        const worldCoords = this.target.toWorldCoords(0, this.stuckRelY);
+        this.projectile.x = worldCoords.x;
+        this.projectile.y = worldCoords.y;
+        this.projectile.angle = this.stuckBaseAngle + worldCoords.angleDelta;
+      }
+
+      this.resetTimer -= dt;
+      if (this.resetTimer <= 0) {
+        this.resetCycle();
+      }
+    } else if (this.state === GameState.MISS) {
       this.projectile.update(this.options.gravity, this.options.airResistance, dt);
       this.resetTimer -= dt;
       if (this.resetTimer <= 0) {
@@ -1922,14 +2003,13 @@ class ArrowShot {
     // 2. Trajectory prediction dots
     this.renderTrajectory();
 
-    // 3. Arrow Projectile
-    if (this.state === GameState.HIT) {
-      this.projectile.render(ctx, this.target.offsetX, this.target.offsetY);
-    } else {
-      this.projectile.render(ctx);
-    }
+    // 3. Target Board (Renders ceiling mount, suspension cord & swinging board)
+    this.target.render(ctx);
 
-    // 4. Front layer of bow (recurve limbs, riser grip, arrow shelf)
+    // 4. Arrow Projectile
+    this.projectile.render(ctx);
+
+    // 5. Front layer of bow (recurve limbs, riser grip, arrow shelf)
     this.bow.renderFront(
       ctx,
       isAiming,
@@ -1937,9 +2017,6 @@ class ArrowShot {
       this.dragData.dragY,
       this.dragData.ratio
     );
-
-    // 5. Target Board
-    this.target.render(ctx);
 
     // 6. FX Micro-Sparks
     this.particles.render(ctx);
