@@ -1,0 +1,20 @@
+{
+  "name": "arrow-shot",
+  "version": "1.0.0",
+  "description": "Non-intrusive interactive easter egg micro-widget with zero dependencies",
+  "type": "module",
+  "scripts": {
+    "start": "npx -y serve . -l 3000",
+    "dev": "npx -y serve . -l 3000"
+  },
+  "keywords": [
+    "widget",
+    "canvas",
+    "easter-egg",
+    "vanilla-js",
+    "interactive",
+    "physics"
+  ],
+  "author": "Arif Sevban",
+  "license": "MIT"
+}

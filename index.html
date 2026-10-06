@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArrowShot - Non-intrusive Interactive Easter Egg Widget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: #111114;
+      --card-border: #27272a;
+      --card-hover-border: #3f3f46;
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --accent: #f59e0b;
+      --accent-muted: rgba(245, 158, 11, 0.12);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Subtle background dot grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 3rem;
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      background-color: rgba(9, 9, 11, 0.85);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-icon {
+      width: 24px;
+      height: 24px;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent);
+      border-radius: 50%;
+    }
+
+    .nav-stats {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 0.35rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .score-badge .score-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .header-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.35rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.15s ease;
+    }
+
+    .header-btn:hover {
+      color: var(--text-main);
+      border-color: var(--text-dim);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 10;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 4.5rem 2rem 8rem;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 5rem;
+    }
+
+    .tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--accent);
+      background: var(--accent-muted);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: 3.25rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 2.25rem;
+      font-weight: 400;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .btn-primary {
+      background: var(--text-main);
+      color: var(--bg);
+      border: none;
+      padding: 0.75rem 1.6rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      font-size: 0.92rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-dim);
+      background: #18181b;
+    }
+
+    /* Cards Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--card-hover-border);
+      transform: translateY(-2px);
+    }
+
+    .card-meta {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.6rem;
+    }
+
+    .card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-main);
+      background: transparent;
+      border: 1px solid var(--card-border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .card-action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Code Snippet Box */
+    .snippet-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .snippet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .snippet-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+
+    .copy-btn:hover {
+      color: var(--text-main);
+      border-color: var(--text-dim);
+    }
+
+    pre code {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e4e4e7;
+      display: block;
+      line-height: 1.6;
+    }
+
+    .code-comment { color: var(--text-dim); }
+    .code-keyword { color: #f472b6; }
+    .code-fn { color: #60a5fa; }
+    .code-string { color: #34d399; }
+
+    /* Launcher Hint in Bottom-Left */
+    .launcher-hint {
+      position: fixed;
+      left: 120px;
+      bottom: 84px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: rgba(17, 17, 20, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    .launcher-hint-arrow {
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+
+    /* Target Hint in Top-Right */
+    .target-hint {
+      position: fixed;
+      right: 130px;
+      top: 92px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: rgba(17, 17, 20, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      pointer-events: none;
+    }
+
+    /* Click Test Toast */
+    #test-toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #18181b;
+      border: 1px solid var(--card-border);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 2.25rem; }
+      header { padding: 1rem 1.5rem; }
+      .launcher-hint { display: none; }
+      .target-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Header with Live Scoreboard -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon"></div>
+      <span>ArrowShot</span>
+    </div>
+
+    <div class="nav-stats">
+      <div class="score-badge">
+        <span>Skor:</span>
+        <span class="score-val" id="score-counter">0</span>
+      </div>
+      <div class="score-badge">
+        <span>İsabet:</span>
+        <span class="score-val" id="accuracy-counter">0%</span>
+      </div>
+      <button class="header-btn" id="sound-toggle" title="Sesi Aç/Kapat">Ses: Kapalı</button>
+      <button class="header-btn" id="reset-btn">Sıfırla</button>
+    </div>
+  </header>
+
+  <!-- Main Website Content (To demonstrate 100% non-intrusive pointer pass-through) -->
+  <main id="main-site-content">
+    <section class="hero">
+      <div class="tag-pill">
+        <span>●</span> GDD v1.0.0 Mimarisi Hazır
+      </div>
+      <h1>Web Siteleri İçin Hafif, Zarif Mikro Oyunlaşma</h1>
+      <p class="subtitle">
+        Harici kütüphane gerektirmeyen, sayfa akışını ve tıklamaları asla engellemeyen 
+        saf HTML5 Canvas + ES6 fizik motoru. Sol alttaki sapanı geriye çekerek oku fırlatın!
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary" id="btn-hero-action">İnteraktif Test Et</button>
+        <button class="btn-secondary" id="btn-hero-select">Metni Seç & Kopyala</button>
+      </div>
+    </section>
+
+    <!-- Interactive Grid Cards (Verifying hover, click & scroll) -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-meta">BÖLÜM 4.2 / EULER</div>
+        <h3>Fiziksel Balistik</h3>
+        <p>Yerçekimi ivmesi (g = 0.42 px/frame²) ve hava direnci (μ = 0.998) ile hesaplanan gerçekçi parabolik ok uçuşu.</p>
+        <button class="card-action-btn" onclick="showToast('Fizik kartı tıklandı! Canvas tıklamayı engellemiyor.')">
+          Kartı Tıkla ↗
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-meta">BÖLÜM 4.4 / PREVIEW</div>
+        <h3>Kesikli Yörünge</h3>
+        <p>Sapan gerildiğinde anlık fırlatma hızına göre tam isabetli yörünge eğrisi noktalarla önceden gösterilir.</p>
+        <button class="card-action-btn" onclick="showToast('Yörünge kartı tıklandı! Sayfa içi etkileşim kusursuz.')">
+          Kartı Tıkla ↗
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-meta">BÖLÜM 4.5 / RINGS</div>
+        <h3>Halka Puanlama</h3>
+        <p>300 (Tam 12'den), 150 ve 50 puanlık eşmerkezli halkalar. Elastik hedef titreşimi ve minimalist kıvılcımlar.</p>
+        <button class="card-action-btn" onclick="showToast('Hedef kartı tıklandı! Non-intrusive yapı doğrulanıyor.')">
+          Kartı Tıkla ↗
+        </button>
+      </div>
+    </div>
+
+    <!-- Code Snippet Demonstration -->
+    <div class="snippet-box">
+      <div class="snippet-header">
+        <span class="snippet-title">Hızlı Entegrasyon (Vanilla ES6)</span>
+        <button class="copy-btn" id="btn-copy-code">Kodu Kopyala</button>
+      </div>
+      <pre><code><span class="code-keyword">import</span> { ArrowShot } <span class="code-keyword">from</span> <span class="code-string">'./src/ArrowShot.js'</span>;
+
+<span class="code-keyword">const</span> widget = <span class="code-keyword">new</span> <span class="code-fn">ArrowShot</span>({
+  bowPosition: <span class="code-string">'bottom-left'</span>,
+  targetPosition: <span class="code-string">'top-right'</span>,
+  gravity: <span class="code-string">0.42</span>,
+  powerMultiplier: <span class="code-string">0.22</span>,
+  maxDragRadius: <span class="code-string">90</span>,
+  enableTrajectory: <span class="code-keyword">true</span>,
+  onHit: (score, total) => console.log(<span class="code-string">`Hit! Score: ${score}`</span>)
+});</code></pre>
+    </div>
+  </main>
+
+  <!-- Minimalist Visual Cues -->
+  <div class="launcher-hint" id="launcher-hint">
+    <span class="launcher-hint-arrow">←</span>
+    <span>Sapanı geriye doğru çekin & bırakın</span>
+  </div>
+
+  <div class="target-hint">
+    <span>Hedef Tahtası</span>
+    <span>↗</span>
+  </div>
+
+  <div id="test-toast"></div>
+
+  <!-- ArrowShot Integration Script -->
+  <script type="module">
+    import { ArrowShot } from './src/ArrowShot.js';
+
+    let soundActive = false;
+
+    // Instantiate ArrowShot with strict GDD Section 8 options
+    const widget = new ArrowShot({
+      bowPosition: 'bottom-left',
+      targetPosition: 'top-right',
+      gravity: 0.42,
+      powerMultiplier: 0.22,
+      maxDragRadius: 90,
+      theme: {
+        primaryColor: '#f59e0b',
+        arrowColor: '#27272a',
+        targetRingColors: ['#18181b', '#27272a', '#f59e0b']
+      },
+      enableTrajectory: true,
+      enableSound: false,
+      onHit: (score, totalScore) => {
+        updateStats();
+        hideLauncherHint();
+      },
+      onMiss: () => {
+        updateStats();
+        hideLauncherHint();
+      }
+    });
+
+    // Scoreboard UI updates
+    const scoreCounter = document.getElementById('score-counter');
+    const accuracyCounter = document.getElementById('accuracy-counter');
+    const launcherHint = document.getElementById('launcher-hint');
+
+    function updateStats() {
+      const stats = widget.getStats();
+      if (scoreCounter) scoreCounter.textContent = stats.score;
+      if (accuracyCounter) accuracyCounter.textContent = `${stats.accuracy}% (${stats.hits}/${stats.shots})`;
+    }
+
+    function hideLauncherHint() {
+      if (launcherHint) {
+        launcherHint.style.opacity = '0';
+        setTimeout(() => launcherHint.remove(), 600);
+      }
+    }
+
+    // Header Controls
+    const soundToggle = document.getElementById('sound-toggle');
+    soundToggle?.addEventListener('click', () => {
+      soundActive = !soundActive;
+      widget.options.enableSound = soundActive;
+      if (soundActive && !widget.audioCtx) {
+        widget.initAudio();
+      }
+      soundToggle.textContent = soundActive ? 'Ses: Açık' : 'Ses: Kapalı';
+      soundToggle.style.color = soundActive ? 'var(--accent)' : 'var(--text-muted)';
+      showToast(soundActive ? 'Ses açıldı (Web Audio sentezleyici aktif)' : 'Ses kapatıldı');
+    });
+
+    const resetBtn = document.getElementById('reset-btn');
+    resetBtn?.addEventListener('click', () => {
+      widget.reset();
+      updateStats();
+      showToast('Skor sıfırlandı.');
+    });
+
+    // Interactive button verification
+    document.getElementById('btn-hero-action')?.addEventListener('click', () => {
+      showToast('Buton tıklandı! Canvas alttaki butonları kesinlikle bloklamıyor.');
+    });
+
+    document.getElementById('btn-hero-select')?.addEventListener('click', () => {
+      showToast('Sayfa metinleri ve tüm bileşenler serbestçe seçilebilir.');
+    });
+
+    document.getElementById('btn-copy-code')?.addEventListener('click', () => {
+      navigator.clipboard?.writeText(`import { ArrowShot } from './src/ArrowShot.js';\nnew ArrowShot();`);
+      showToast('Kod panoya kopyalandı!');
+    });
+
+    // Global toast helper for UI verification
+    window.showToast = function(msg) {
+      const toast = document.getElementById('test-toast');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => {
+        toast.style.display = 'none';
+      }, 2400);
+    };
+  </script>
+</body>
+</html>
