@@ -1,6 +1,7 @@
 import { MathUtils } from '../src/utils/MathUtils.js';
 import { Physics } from '../src/core/Physics.js';
 import { Collision } from '../src/core/Collision.js';
+import { Target } from '../src/entities/Target.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -119,5 +120,39 @@ assert(boardMissHigh.hit === false, 'board high miss is false');
 // 7. Horizontal not reached yet (arrowX = 1350 < boardX = 1400)
 const boardMissShort = Collision.checkBoardHit(1350, boardY, 1300, boardX, boardY, boardH);
 assert(boardMissShort.hit === false, 'board short miss is false');
+
+console.log('\n--- Testing Target Ceiling Drop Entrance & Retract Physics ---');
+const suspendedTarget = new Target({
+  x: 1000,
+  y: 350,
+  height: 250,
+  width: 26,
+  initiallyDeployed: false
+});
+
+assert(suspendedTarget.isDeployed === false, 'target starts retracted when initiallyDeployed is false');
+assert(suspendedTarget.dropYOffset < -500, 'target initial Y offset is parked above ceiling');
+
+// Trigger drop animation
+suspendedTarget.startDrop();
+assert(suspendedTarget.isDropping === true, 'isDropping is true after startDrop()');
+
+// Step through gravity acceleration phase
+suspendedTarget.update(0.3);
+assert(suspendedTarget.dropYOffset > suspendedTarget.initialYOffset, 'target descends downward under gravity');
+
+// Step past duration (0.88s) to complete drop
+suspendedTarget.update(0.7);
+assert(suspendedTarget.isDropping === false, 'isDropping ends when duration completes');
+assert(suspendedTarget.isDeployed === true, 'target becomes fully deployed');
+assert(Math.abs(suspendedTarget.dropYOffset) < 0.001, 'dropYOffset settles to 0 at resting height');
+
+// Test retract animation
+suspendedTarget.startRetract();
+assert(suspendedTarget.isRetracting === true, 'isRetracting is true after startRetract()');
+suspendedTarget.update(0.5);
+assert(suspendedTarget.isRetracting === false, 'isRetracting completes');
+assert(suspendedTarget.isDeployed === false, 'target is retracted back above screen');
+assert(suspendedTarget.dropYOffset <= suspendedTarget.initialYOffset, 'target returns to ceiling offset');
 
 console.log('\n🎉 ALL PHYSICS & COLLISION VERIFICATIONS PASSED 100%!');

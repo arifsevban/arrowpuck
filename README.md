@@ -13,6 +13,7 @@ arrowpuck allows developers and designers to add an elegant archery bow interact
 - Physical Euler integration: Realistic parabolic arrow flight calculated with gravity acceleration and aerodynamic drag.
 - Accurate trajectory preview: Real-time dotted parabolic trajectory forecast rendered dynamically while drawing the bow.
 - Suspended target board scoring: Ceiling-suspended vertical archery board evaluates impact height into 5 graded challenge intervals (500 points for razor bullseye core, 300 points for inner master, 150 points for middle, 75 points for mid-outer, 25 points for outer edge) and sways realistically with pendulum physics based on arrow velocity and hit height.
+- Interactive trigger prompt: Elegant floating prompt button catches visitor attention on host websites and drops the target board dynamically from the ceiling upon activation.
 - Minimalist visual aesthetics: Clean industrial design with monochrome palettes, crisp vector-sharp geometry, high-DPI retina display scaling, damped harmonic target shake, and physical micro-sparks.
 - Dual distribution: Available as both an ES Module for modern bundlers and a minified UMD standalone bundle for instant CDN script-tag usage.
 
@@ -59,6 +60,8 @@ import { ArrowPuck } from 'arrowpuck';
 const widget = new ArrowPuck({
   bowPosition: 'bottom-left',
   targetPosition: 'top-right',
+  autoOpen: false,
+  promptText: 'Bored?',
   onHit: (score, totalScore) => {
     console.log(`Hit! Score: ${score}, Total: ${totalScore}`);
   }
@@ -74,15 +77,22 @@ Pass a configuration object to `new ArrowPuck(options)`:
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `mountTarget` | HTMLElement | `document.body` | DOM container element where the fixed canvas is appended. |
+| `autoOpen` | boolean | `false` | When false, widget remains parked until visitor clicks the floating prompt pill. |
+| `showPrompt` | boolean | `true` | Renders a stylish floating prompt pill button on the page. |
+| `promptText` | string | `'Sıkıldınız mı?'` | Text displayed inside the floating prompt pill before opening. |
+| `closeText` | string | `'✕ Kapat'` | Text displayed inside the toggle button while active to close or minimize. |
+| `promptPosition` | string \| object | `'bottom-right'` | Position of prompt button (`'bottom-right'`, `'bottom-left'`, `'top-right'`, `'top-left'`, or object `{ bottom, right }`). |
 | `bowPosition` | string \| object | `'bottom-left'` | Launcher placement. Accepts `'bottom-left'`, `'bottom-right'`, or `{ x, y }`. |
 | `targetPosition` | string \| object | `'top-right'` | Target placement. Accepts `'top-right'`, `'top-left'`, or `{ x, y }`. |
 | `gravity` | number | `0.38` | Vertical gravitational acceleration in pixels per frame squared. |
-| `powerMultiplier` | number | `0.36` | Velocity scale factor applied to the clamped pull displacement vector. |
+| `powerMultiplier` | number | `0.38` | Velocity scale factor applied to the clamped pull displacement vector. |
 | `maxDragRadius` | number | `110` | Maximum pull radius in pixels. Pull distance beyond this is clamped. |
-| `airResistance` | number | `0.998` | Horizontal velocity multiplier applied each frame. |
+| `airResistance` | number | `1.0` | Air resistance drag multiplier applied each frame. |
 | `theme` | object | `{ ... }` | Color tokens for customization (see Theme Object below). |
 | `enableTrajectory` | boolean | `true` | Enables dotted trajectory forecast line during aiming. |
 | `enableSound` | boolean | `false` | Enables Web Audio API synthesized mechanical and impact sound effects. |
+| `onOpen` | function | `() => {}` | Callback invoked when the widget opens and target drops. |
+| `onClose` | function | `() => {}` | Callback invoked when the widget closes and target retracts. |
 | `onHit` | function | `(score, total) => {}` | Callback invoked upon successful collision with the target. |
 | `onMiss` | function | `() => {}` | Callback invoked when the arrow hits the floor or exits screen bounds. |
 
@@ -106,9 +116,12 @@ theme: {
 
 Instances of `ArrowPuck` expose the following methods:
 
+- `widget.open()`: Activates the widget, dropping the suspended target from the ceiling with spring-pendulum physics.
+- `widget.close()`: Retracts the target board back into the ceiling and hides the bow.
+- `widget.toggle()`: Toggles the widget between open and closed states.
 - `widget.getStats()`: Returns an object containing `{ score, shots, hits, accuracy }`.
 - `widget.reset()`: Resets score, shot counters, active particles, and places the projectile in ready state.
-- `widget.destroy()`: Cancels animation frames, removes DOM elements (canvas and trigger handle), and closes audio contexts.
+- `widget.destroy()`: Cancels animation frames, removes DOM elements (canvas, trigger handle, prompt button), and closes audio contexts.
 
 ---
 

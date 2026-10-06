@@ -430,8 +430,8 @@
     <div>MIT Licensed. Clean, zero-dependency engineering.</div>
   </footer>
 
-  <!-- Subtle Easter Egg Indicator -->
-  <div class="easter-egg-hint" id="hint">
+  <!-- Subtle Easter Egg Indicator (visible once opened) -->
+  <div class="easter-egg-hint" id="hint" style="display: none; opacity: 0;">
     <span>← Pull bowstring to aim &amp; release</span>
   </div>
 
@@ -449,6 +449,23 @@
       powerMultiplier: 0.38,
       maxDragRadius: 110,
       airResistance: 1.0,
+      autoOpen: false,
+      promptText: 'Sıkıldınız mı? 🎯',
+      promptPosition: 'bottom-right',
+      onOpen: () => {
+        const hint = document.getElementById('hint');
+        if (hint) {
+          hint.style.display = 'flex';
+          setTimeout(() => hint.style.opacity = '1', 100);
+        }
+      },
+      onClose: () => {
+        const hint = document.getElementById('hint');
+        if (hint) {
+          hint.style.opacity = '0';
+          setTimeout(() => hint.style.display = 'none', 400);
+        }
+      },
       onHit: (score, total) => {
         dismissHint();
       },
@@ -461,7 +478,7 @@
       const hint = document.getElementById('hint');
       if (hint) {
         hint.style.opacity = '0';
-        setTimeout(() => hint.remove(), 500);
+        setTimeout(() => hint.style.display = 'none', 500);
       }
     }
 

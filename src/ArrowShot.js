@@ -36,6 +36,11 @@ export class ArrowShot {
       powerMultiplier: 0.38,
       maxDragRadius: 110,
       airResistance: 1.0,
+      autoOpen: false,
+      showPrompt: true,
+      promptText: 'Sıkıldınız mı? 🎯',
+      closeText: '✕ Kapat',
+      promptPosition: 'bottom-right',
       theme: {
         primaryColor: '#f59e0b',
         arrowColor: '#27272a',
@@ -43,6 +48,8 @@ export class ArrowShot {
       },
       enableTrajectory: true,
       enableSound: false,
+      onOpen: () => {},
+      onClose: () => {},
       onHit: (score, totalScore) => {},
       onMiss: () => {},
       ...options
@@ -53,6 +60,10 @@ export class ArrowShot {
     this.totalScore = 0;
     this.totalShots = 0;
     this.hits = 0;
+
+    // Open/Closed widget state
+    this.isOpen = Boolean(this.options.autoOpen);
+    this.openProgress = this.isOpen ? 1 : 0;
 
     // Time & loop tracking
     this.lastTime = 0;
@@ -89,7 +100,7 @@ export class ArrowShot {
   }
 
   /**
-   * Sets up full-screen fixed canvas and minimal trigger hotspot.
+   * Sets up full-screen fixed canvas, minimal trigger hotspot, and floating prompt.
    */
   initDOM() {
     this.mountTarget = this.options.mountTarget || document.body;
@@ -123,10 +134,16 @@ export class ArrowShot {
     this.triggerZone.style.touchAction = 'none';
     this.triggerZone.style.userSelect = 'none';
     this.triggerZone.style.webkitUserSelect = 'none';
+    this.triggerZone.style.display = this.isOpen ? 'block' : 'none';
     this.triggerZone.setAttribute('aria-label', 'ArrowPuck Launcher');
     this.triggerZone.title = 'Tıkla ve yayı geriye çekerek nişan al';
 
     this.mountTarget.appendChild(this.triggerZone);
+
+    // 3. Floating interactive prompt badge (attention-grabber on host site)
+    if (this.options.showPrompt) {
+      this.initPromptUI();
+    }
 
     // Resize handling with high-DPI / retina sharpness
     this.handleResize = this.handleResize.bind(this);
@@ -229,7 +246,8 @@ export class ArrowShot {
       y: this.targetPos.y,
       height: 250,
       width: 26,
-      theme: this.options.theme
+      theme: this.options.theme,
+      initiallyDeployed: this.isOpen
     });
 
     this.particles = new ParticleSystem({
@@ -239,6 +257,214 @@ export class ArrowShot {
     this.popups = new ScorePopup({
       theme: this.options.theme
     });
+  }
+
+  /**
+   * Initializes floating interactive trigger pill on host website.
+   */
+  initPromptUI() {
+    if (typeof document === 'undefined') return;
+
+    if (!document.getElementById('arrowshot-prompt-styles')) {
+      const style = document.createElement('style');
+      style.id = 'arrowshot-prompt-styles';
+      style.textContent = `
+        @keyframes arrowshot-breathe {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 14px rgba(245, 158, 11, 0.18);
+          }
+          50% {
+            transform: translateY(-2.5px) scale(1.025);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 22px rgba(245, 158, 11, 0.32);
+          }
+        }
+        @keyframes arrowshot-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(0.8); }
+        }
+        .arrowshot-prompt-btn {
+          position: fixed;
+          z-index: 100001;
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          background: rgba(18, 18, 22, 0.90);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(245, 158, 11, 0.32);
+          border-radius: 9999px;
+          padding: 10px 18px;
+          color: #f4f4f5;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+          font-size: 13.5px;
+          font-weight: 500;
+          line-height: 1;
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                      border-color 0.22s ease,
+                      background-color 0.22s ease,
+                      box-shadow 0.22s ease;
+          animation: arrowshot-breathe 3.2s infinite ease-in-out;
+        }
+        .arrowshot-prompt-btn:hover {
+          border-color: rgba(245, 158, 11, 0.7);
+          background: rgba(24, 24, 30, 0.96);
+          transform: translateY(-2px) scale(1.03);
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.38);
+        }
+        .arrowshot-prompt-btn:active {
+          transform: translateY(0) scale(0.97);
+        }
+        .arrowshot-prompt-btn.is-active {
+          animation: none;
+          background: rgba(24, 24, 28, 0.88);
+          border-color: rgba(255, 255, 255, 0.16);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          padding: 8px 14px;
+          font-size: 12.5px;
+          color: #a1a1aa;
+        }
+        .arrowshot-prompt-btn.is-active:hover {
+          border-color: rgba(239, 68, 68, 0.5);
+          color: #f4f4f5;
+          background: rgba(30, 24, 26, 0.94);
+        }
+        .arrowshot-prompt-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #f59e0b;
+          box-shadow: 0 0 8px #f59e0b;
+          display: inline-block;
+          animation: arrowshot-dot-pulse 2s infinite ease-in-out;
+        }
+        .arrowshot-prompt-tag {
+          font-size: 11px;
+          color: #fbbf24;
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.28);
+          padding: 3px 8px;
+          border-radius: 9999px;
+          letter-spacing: 0.02em;
+          font-weight: 600;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    this.promptBtn = document.createElement('button');
+    this.promptBtn.id = 'arrowshot-prompt';
+    this.promptBtn.className = 'arrowshot-prompt-btn' + (this.isOpen ? ' is-active' : '');
+
+    // Positioning
+    const pos = this.options.promptPosition;
+    if (typeof pos === 'object' && pos !== null) {
+      Object.assign(this.promptBtn.style, pos);
+    } else {
+      switch (pos) {
+        case 'bottom-left':
+          this.promptBtn.style.bottom = '24px';
+          this.promptBtn.style.left = '24px';
+          break;
+        case 'top-right':
+          this.promptBtn.style.top = '24px';
+          this.promptBtn.style.right = '24px';
+          break;
+        case 'top-left':
+          this.promptBtn.style.top = '24px';
+          this.promptBtn.style.left = '24px';
+          break;
+        case 'bottom-right':
+        default:
+          this.promptBtn.style.bottom = '24px';
+          this.promptBtn.style.right = '28px';
+          break;
+      }
+    }
+
+    this.updatePromptButtonUI();
+
+    this.promptBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    this.mountTarget.appendChild(this.promptBtn);
+  }
+
+  /**
+   * Updates prompt pill content according to open/closed state.
+   */
+  updatePromptButtonUI() {
+    if (!this.promptBtn) return;
+    if (this.isOpen) {
+      this.promptBtn.classList.add('is-active');
+      this.promptBtn.innerHTML = `
+        <span style="font-size: 12px; opacity: 0.75;">✕</span>
+        <span>${this.options.closeText}</span>
+      `;
+      this.promptBtn.setAttribute('aria-label', this.options.closeText);
+      this.promptBtn.title = 'Oyunu kapat';
+    } else {
+      this.promptBtn.classList.remove('is-active');
+      this.promptBtn.innerHTML = `
+        <span class="arrowshot-prompt-dot"></span>
+        <span>${this.options.promptText}</span>
+        <span class="arrowshot-prompt-tag">Ok At</span>
+      `;
+      this.promptBtn.setAttribute('aria-label', this.options.promptText);
+      this.promptBtn.title = 'Oyunu başlat';
+    }
+  }
+
+  /**
+   * Public API: Activates and opens the widget.
+   * Target plunges down from the ceiling with pendulum drop animation.
+   */
+  open() {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.openProgress = 0;
+    this.triggerZone.style.display = 'block';
+
+    this.updatePromptButtonUI();
+    this.target.startDrop();
+
+    this.options.onOpen?.();
+  }
+
+  /**
+   * Public API: Closes and retracts the widget.
+   * Target retracts back into the ceiling, bow fades away.
+   */
+  close() {
+    if (!this.isOpen) return;
+    this.isOpen = false;
+    this.triggerZone.style.display = 'none';
+
+    this.updatePromptButtonUI();
+    this.target.startRetract();
+
+    if (this.state === GameState.AIMING || this.state === GameState.FLYING) {
+      this.resetCycle();
+    }
+
+    this.options.onClose?.();
+  }
+
+  /**
+   * Public API: Toggles widget open/closed state.
+   */
+  toggle() {
+    if (this.isOpen) {
+      this.close();
+    } else {
+      this.open();
+    }
   }
 
   /**
@@ -491,6 +717,13 @@ export class ArrowShot {
    * Per-frame updates.
    */
   update(dt) {
+    // Smooth transition tracking for bow and arrow entrance
+    if (this.isOpen && this.openProgress < 1) {
+      this.openProgress = Math.min(1, this.openProgress + dt / 0.45);
+    } else if (!this.isOpen && this.openProgress > 0) {
+      this.openProgress = Math.max(0, this.openProgress - dt / 0.35);
+    }
+
     this.bow.update(dt);
     this.target.update(dt);
     this.particles.update(dt);
@@ -599,39 +832,64 @@ export class ArrowShot {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
-    const isAiming = this.state === GameState.AIMING;
+    // If completely closed and target is not in motion, skip rendering
+    if (!this.isOpen && this.openProgress <= 0 && !this.target.isDropping && !this.target.isRetracting) {
+      return;
+    }
 
-    // 1. Back layer of bow (bowstring and draw guide)
-    this.bow.renderBack(
-      ctx,
-      isAiming,
-      this.dragData.dragX,
-      this.dragData.dragY,
-      this.dragData.ratio
-    );
-
-    // 2. Trajectory prediction dots
-    this.renderTrajectory();
-
-    // 3. Target Board (Renders ceiling mount, suspension cord & swinging board)
+    // 1. Target Board (Renders ceiling mount, suspension cord & swinging board)
     this.target.render(ctx);
 
-    // 4. Arrow Projectile
-    this.projectile.render(ctx);
+    // 2. Bow & Arrow with smooth entrance fade and slide
+    const isAiming = this.state === GameState.AIMING;
+    const bowAlpha = MathUtils.clamp(this.openProgress, 0, 1);
+    const bowSlide = (1 - Math.sin(bowAlpha * Math.PI / 2)) * 48;
 
-    // 5. Front layer of bow (recurve limbs, riser grip, arrow shelf)
-    this.bow.renderFront(
-      ctx,
-      isAiming,
-      this.dragData.dragX,
-      this.dragData.dragY,
-      this.dragData.ratio
-    );
+    if (bowAlpha > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = bowAlpha;
+      ctx.translate(0, bowSlide);
 
-    // 6. FX Micro-Sparks
+      // Back layer of bow (bowstring and draw guide)
+      this.bow.renderBack(
+        ctx,
+        isAiming,
+        this.dragData.dragX,
+        this.dragData.dragY,
+        this.dragData.ratio
+      );
+
+      // Trajectory prediction dots
+      this.renderTrajectory();
+
+      // Front layer of bow (recurve limbs, riser grip, arrow shelf)
+      this.bow.renderFront(
+        ctx,
+        isAiming,
+        this.dragData.dragX,
+        this.dragData.dragY,
+        this.dragData.ratio
+      );
+
+      ctx.restore();
+    }
+
+    // 3. Arrow Projectile
+    // Rendered independently so stuck or flying arrows maintain exact coordinates
+    if (this.state === GameState.HIT || this.state === GameState.MISS || this.state === GameState.FLYING) {
+      this.projectile.render(ctx);
+    } else if (bowAlpha > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = bowAlpha;
+      ctx.translate(0, bowSlide);
+      this.projectile.render(ctx);
+      ctx.restore();
+    }
+
+    // 4. FX Micro-Sparks
     this.particles.render(ctx);
 
-    // 7. FX Score Popups
+    // 5. FX Score Popups
     this.popups.render(ctx);
   }
 
@@ -667,6 +925,7 @@ export class ArrowShot {
     window.removeEventListener('resize', this.handleResize);
     this.canvas?.remove();
     this.triggerZone?.remove();
+    this.promptBtn?.remove();
     if (this.audioCtx) this.audioCtx.close();
   }
 }

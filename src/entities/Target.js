@@ -15,7 +15,7 @@ export class Target {
    * @param {number} [options.width=26] - Board thickness / depth
    * @param {Object} [options.theme] - Theme customization
    */
-  constructor({ x, y, height = 250, width = 26, theme = {} }) {
+  constructor({ x, y, height = 250, width = 26, theme = {}, initiallyDeployed = false }) {
     this.x = x;
     this.y = y;
     this.height = height;
@@ -50,9 +50,21 @@ export class Target {
     this.swayY = 0;
     this.tilt = 0;
 
+    // Deployment / Ceiling drop animation state
+    this.initiallyDeployed = initiallyDeployed;
+    this.isDeployed = this.initiallyDeployed;
+    this.isDropping = false;
+    this.isRetracting = false;
+    this.dropTime = 0;
+    this.dropDuration = 0.88;
+    this.retractTime = 0;
+    this.retractDuration = 0.42;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.dropYOffset = this.isDeployed ? 0 : this.initialYOffset;
+
     // Aliases for compatibility
     this.offsetX = 0;
-    this.offsetY = 0;
+    this.offsetY = this.dropYOffset;
   }
 
   /**
@@ -61,6 +73,42 @@ export class Target {
   setPosition(x, y) {
     this.x = x;
     this.y = y;
+    this.initialYOffset = -(this.y + this.height + 60);
+    if (!this.isDeployed && !this.isDropping && !this.isRetracting) {
+      this.dropYOffset = this.initialYOffset;
+      this.offsetY = this.dropYOffset;
+    }
+  }
+
+  /**
+   * Triggers the ceiling-drop entrance animation.
+   * Target plunges down under gravity, cord catches with an elastic bounce and natural sway.
+   */
+  startDrop() {
+    this.isDeployed = false;
+    this.isDropping = true;
+    this.isRetracting = false;
+    this.dropTime = 0;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.dropYOffset = this.initialYOffset;
+    this.isShaking = false;
+    this.swayX = 0;
+    this.swayY = 0;
+    this.tilt = 0;
+  }
+
+  /**
+   * Triggers the retract exit animation, pulling the board back up into the ceiling.
+   */
+  startRetract() {
+    this.isRetracting = true;
+    this.isDropping = false;
+    this.retractTime = 0;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.isShaking = false;
+    this.swayX = 0;
+    this.swayY = 0;
+    this.tilt = 0;
   }
 
   /**
@@ -78,7 +126,7 @@ export class Target {
     this.swayAmplitude = Math.min(34, impactSpeed * 1.55);
 
     // Lever arm from top suspension eyelet (0 at top, 250 at bottom)
-    const topY = this.y - this.halfHeight;
+    const topY = this.y - this.halfHeight + this.dropYOffset;
     const leverArm = Math.max(10, impactY - topY);
 
     // Angular tilt torque: hits near bottom kick out dramatically
@@ -87,45 +135,83 @@ export class Target {
   }
 
   /**
-   * Per-frame physics integration for pendulum swing and angular oscillation.
+   * Per-frame physics integration for pendulum swing, drop entrance, and angular oscillation.
    * @param {number} dt - Delta time in seconds
    */
   update(dt = 0.016) {
-    if (!this.isShaking) {
+    // 1. Handle Drop / Retract animations
+    if (this.isDropping) {
+      this.dropTime += dt;
+      const tau = Math.min(1, this.dropTime / this.dropDuration);
+
+      if (tau < 0.60) {
+        // Accelerating descent under gravity
+        const p = tau / 0.60;
+        const fall = p * p;
+        this.dropYOffset = this.initialYOffset * (1 - fall);
+      } else {
+        // Cable catches: damped bounce & elastic rebound
+        const pBounce = (tau - 0.60) / 0.40;
+        const bounce = Math.sin(pBounce * Math.PI * 3.5) * Math.exp(-pBounce * 4.2);
+        this.dropYOffset = -this.initialYOffset * 0.10 * bounce;
+
+        // Deceleration impact jolt on initial cable catch
+        if (!this.isShaking && (this.dropTime - dt) < 0.60 * this.dropDuration) {
+          this.isShaking = true;
+          this.swingTime = 0;
+          this.swayAmplitude = 15;
+          this.tiltAmplitude = 0.09;
+        }
+      }
+
+      if (tau >= 1.0) {
+        this.isDropping = false;
+        this.isDeployed = true;
+        this.dropYOffset = 0;
+      }
+    } else if (this.isRetracting) {
+      this.retractTime += dt;
+      const tau = Math.min(1, this.retractTime / this.retractDuration);
+      const pull = tau * tau * tau;
+      this.dropYOffset = this.initialYOffset * pull;
+
+      if (tau >= 1.0) {
+        this.isRetracting = false;
+        this.isDeployed = false;
+        this.dropYOffset = this.initialYOffset;
+      }
+    }
+
+    // 2. Handle Pendulum Swing
+    if (this.isShaking) {
+      this.swingTime += dt;
+
+      if (this.swingTime >= this.swingDuration) {
+        this.isShaking = false;
+        this.swayX = 0;
+        this.swayY = 0;
+        this.tilt = 0;
+      } else {
+        // Damped horizontal pendulum sway of the suspension point
+        const swayDecay = Math.exp(-2.5 * this.swingTime);
+        const swayWave = Math.sin(5.6 * this.swingTime);
+        this.swayX = this.swayAmplitude * swayDecay * swayWave;
+        // Slight upward circular arc lift as pendulum sways
+        this.swayY = -Math.abs(this.swayX) * 0.06;
+
+        // Damped rotational tilt oscillation around the suspension pivot
+        const tiltDecay = Math.exp(-3.4 * this.swingTime);
+        const tiltWave = Math.cos(9.8 * this.swingTime);
+        this.tilt = this.tiltAmplitude * tiltDecay * tiltWave;
+      }
+    } else if (!this.isDropping) {
       this.swayX = 0;
       this.swayY = 0;
       this.tilt = 0;
-      this.offsetX = 0;
-      this.offsetY = 0;
-      return;
     }
-
-    this.swingTime += dt;
-
-    if (this.swingTime >= this.swingDuration) {
-      this.isShaking = false;
-      this.swayX = 0;
-      this.swayY = 0;
-      this.tilt = 0;
-      this.offsetX = 0;
-      this.offsetY = 0;
-      return;
-    }
-
-    // 1. Damped horizontal pendulum sway of the suspension point
-    const swayDecay = Math.exp(-2.5 * this.swingTime);
-    const swayWave = Math.sin(5.6 * this.swingTime);
-    this.swayX = this.swayAmplitude * swayDecay * swayWave;
-    // Slight upward circular arc lift as pendulum sways
-    this.swayY = -Math.abs(this.swayX) * 0.06;
-
-    // 2. Damped rotational tilt oscillation around the suspension pivot
-    const tiltDecay = Math.exp(-3.4 * this.swingTime);
-    const tiltWave = Math.cos(9.8 * this.swingTime);
-    this.tilt = this.tiltAmplitude * tiltDecay * tiltWave;
 
     this.offsetX = this.swayX;
-    this.offsetY = this.swayY;
+    this.offsetY = this.swayY + this.dropYOffset;
   }
 
   /**
@@ -134,7 +220,7 @@ export class Target {
   getPivot() {
     return {
       x: this.x + this.width / 2 + this.swayX,
-      y: this.y - this.halfHeight + this.swayY
+      y: this.y - this.halfHeight + this.swayY + this.dropYOffset
     };
   }
 
@@ -163,6 +249,11 @@ export class Target {
    * @param {CanvasRenderingContext2D} ctx
    */
   render(ctx) {
+    // If completely retracted and not transitioning, skip rendering
+    if (!this.isDeployed && !this.isDropping && !this.isRetracting) {
+      return;
+    }
+
     ctx.save();
 
     const pivot = this.getPivot();

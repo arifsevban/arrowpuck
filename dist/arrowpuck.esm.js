@@ -802,7 +802,7 @@ class Target {
    * @param {number} [options.width=26] - Board thickness / depth
    * @param {Object} [options.theme] - Theme customization
    */
-  constructor({ x, y, height = 250, width = 26, theme = {} }) {
+  constructor({ x, y, height = 250, width = 26, theme = {}, initiallyDeployed = false }) {
     this.x = x;
     this.y = y;
     this.height = height;
@@ -837,9 +837,21 @@ class Target {
     this.swayY = 0;
     this.tilt = 0;
 
+    // Deployment / Ceiling drop animation state
+    this.initiallyDeployed = initiallyDeployed;
+    this.isDeployed = this.initiallyDeployed;
+    this.isDropping = false;
+    this.isRetracting = false;
+    this.dropTime = 0;
+    this.dropDuration = 0.88;
+    this.retractTime = 0;
+    this.retractDuration = 0.42;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.dropYOffset = this.isDeployed ? 0 : this.initialYOffset;
+
     // Aliases for compatibility
     this.offsetX = 0;
-    this.offsetY = 0;
+    this.offsetY = this.dropYOffset;
   }
 
   /**
@@ -848,6 +860,42 @@ class Target {
   setPosition(x, y) {
     this.x = x;
     this.y = y;
+    this.initialYOffset = -(this.y + this.height + 60);
+    if (!this.isDeployed && !this.isDropping && !this.isRetracting) {
+      this.dropYOffset = this.initialYOffset;
+      this.offsetY = this.dropYOffset;
+    }
+  }
+
+  /**
+   * Triggers the ceiling-drop entrance animation.
+   * Target plunges down under gravity, cord catches with an elastic bounce and natural sway.
+   */
+  startDrop() {
+    this.isDeployed = false;
+    this.isDropping = true;
+    this.isRetracting = false;
+    this.dropTime = 0;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.dropYOffset = this.initialYOffset;
+    this.isShaking = false;
+    this.swayX = 0;
+    this.swayY = 0;
+    this.tilt = 0;
+  }
+
+  /**
+   * Triggers the retract exit animation, pulling the board back up into the ceiling.
+   */
+  startRetract() {
+    this.isRetracting = true;
+    this.isDropping = false;
+    this.retractTime = 0;
+    this.initialYOffset = -(this.y + this.height + 60);
+    this.isShaking = false;
+    this.swayX = 0;
+    this.swayY = 0;
+    this.tilt = 0;
   }
 
   /**
@@ -865,7 +913,7 @@ class Target {
     this.swayAmplitude = Math.min(34, impactSpeed * 1.55);
 
     // Lever arm from top suspension eyelet (0 at top, 250 at bottom)
-    const topY = this.y - this.halfHeight;
+    const topY = this.y - this.halfHeight + this.dropYOffset;
     const leverArm = Math.max(10, impactY - topY);
 
     // Angular tilt torque: hits near bottom kick out dramatically
@@ -874,45 +922,83 @@ class Target {
   }
 
   /**
-   * Per-frame physics integration for pendulum swing and angular oscillation.
+   * Per-frame physics integration for pendulum swing, drop entrance, and angular oscillation.
    * @param {number} dt - Delta time in seconds
    */
   update(dt = 0.016) {
-    if (!this.isShaking) {
+    // 1. Handle Drop / Retract animations
+    if (this.isDropping) {
+      this.dropTime += dt;
+      const tau = Math.min(1, this.dropTime / this.dropDuration);
+
+      if (tau < 0.60) {
+        // Accelerating descent under gravity
+        const p = tau / 0.60;
+        const fall = p * p;
+        this.dropYOffset = this.initialYOffset * (1 - fall);
+      } else {
+        // Cable catches: damped bounce & elastic rebound
+        const pBounce = (tau - 0.60) / 0.40;
+        const bounce = Math.sin(pBounce * Math.PI * 3.5) * Math.exp(-pBounce * 4.2);
+        this.dropYOffset = -this.initialYOffset * 0.10 * bounce;
+
+        // Deceleration impact jolt on initial cable catch
+        if (!this.isShaking && (this.dropTime - dt) < 0.60 * this.dropDuration) {
+          this.isShaking = true;
+          this.swingTime = 0;
+          this.swayAmplitude = 15;
+          this.tiltAmplitude = 0.09;
+        }
+      }
+
+      if (tau >= 1.0) {
+        this.isDropping = false;
+        this.isDeployed = true;
+        this.dropYOffset = 0;
+      }
+    } else if (this.isRetracting) {
+      this.retractTime += dt;
+      const tau = Math.min(1, this.retractTime / this.retractDuration);
+      const pull = tau * tau * tau;
+      this.dropYOffset = this.initialYOffset * pull;
+
+      if (tau >= 1.0) {
+        this.isRetracting = false;
+        this.isDeployed = false;
+        this.dropYOffset = this.initialYOffset;
+      }
+    }
+
+    // 2. Handle Pendulum Swing
+    if (this.isShaking) {
+      this.swingTime += dt;
+
+      if (this.swingTime >= this.swingDuration) {
+        this.isShaking = false;
+        this.swayX = 0;
+        this.swayY = 0;
+        this.tilt = 0;
+      } else {
+        // Damped horizontal pendulum sway of the suspension point
+        const swayDecay = Math.exp(-2.5 * this.swingTime);
+        const swayWave = Math.sin(5.6 * this.swingTime);
+        this.swayX = this.swayAmplitude * swayDecay * swayWave;
+        // Slight upward circular arc lift as pendulum sways
+        this.swayY = -Math.abs(this.swayX) * 0.06;
+
+        // Damped rotational tilt oscillation around the suspension pivot
+        const tiltDecay = Math.exp(-3.4 * this.swingTime);
+        const tiltWave = Math.cos(9.8 * this.swingTime);
+        this.tilt = this.tiltAmplitude * tiltDecay * tiltWave;
+      }
+    } else if (!this.isDropping) {
       this.swayX = 0;
       this.swayY = 0;
       this.tilt = 0;
-      this.offsetX = 0;
-      this.offsetY = 0;
-      return;
     }
-
-    this.swingTime += dt;
-
-    if (this.swingTime >= this.swingDuration) {
-      this.isShaking = false;
-      this.swayX = 0;
-      this.swayY = 0;
-      this.tilt = 0;
-      this.offsetX = 0;
-      this.offsetY = 0;
-      return;
-    }
-
-    // 1. Damped horizontal pendulum sway of the suspension point
-    const swayDecay = Math.exp(-2.5 * this.swingTime);
-    const swayWave = Math.sin(5.6 * this.swingTime);
-    this.swayX = this.swayAmplitude * swayDecay * swayWave;
-    // Slight upward circular arc lift as pendulum sways
-    this.swayY = -Math.abs(this.swayX) * 0.06;
-
-    // 2. Damped rotational tilt oscillation around the suspension pivot
-    const tiltDecay = Math.exp(-3.4 * this.swingTime);
-    const tiltWave = Math.cos(9.8 * this.swingTime);
-    this.tilt = this.tiltAmplitude * tiltDecay * tiltWave;
 
     this.offsetX = this.swayX;
-    this.offsetY = this.swayY;
+    this.offsetY = this.swayY + this.dropYOffset;
   }
 
   /**
@@ -921,7 +1007,7 @@ class Target {
   getPivot() {
     return {
       x: this.x + this.width / 2 + this.swayX,
-      y: this.y - this.halfHeight + this.swayY
+      y: this.y - this.halfHeight + this.swayY + this.dropYOffset
     };
   }
 
@@ -950,6 +1036,11 @@ class Target {
    * @param {CanvasRenderingContext2D} ctx
    */
   render(ctx) {
+    // If completely retracted and not transitioning, skip rendering
+    if (!this.isDeployed && !this.isDropping && !this.isRetracting) {
+      return;
+    }
+
     ctx.save();
 
     const pivot = this.getPivot();
@@ -1426,6 +1517,11 @@ class ArrowShot {
       powerMultiplier: 0.38,
       maxDragRadius: 110,
       airResistance: 1.0,
+      autoOpen: false,
+      showPrompt: true,
+      promptText: 'Sıkıldınız mı? 🎯',
+      closeText: '✕ Kapat',
+      promptPosition: 'bottom-right',
       theme: {
         primaryColor: '#f59e0b',
         arrowColor: '#27272a',
@@ -1433,6 +1529,8 @@ class ArrowShot {
       },
       enableTrajectory: true,
       enableSound: false,
+      onOpen: () => {},
+      onClose: () => {},
       onHit: (score, totalScore) => {},
       onMiss: () => {},
       ...options
@@ -1443,6 +1541,10 @@ class ArrowShot {
     this.totalScore = 0;
     this.totalShots = 0;
     this.hits = 0;
+
+    // Open/Closed widget state
+    this.isOpen = Boolean(this.options.autoOpen);
+    this.openProgress = this.isOpen ? 1 : 0;
 
     // Time & loop tracking
     this.lastTime = 0;
@@ -1479,7 +1581,7 @@ class ArrowShot {
   }
 
   /**
-   * Sets up full-screen fixed canvas and minimal trigger hotspot.
+   * Sets up full-screen fixed canvas, minimal trigger hotspot, and floating prompt.
    */
   initDOM() {
     this.mountTarget = this.options.mountTarget || document.body;
@@ -1513,10 +1615,16 @@ class ArrowShot {
     this.triggerZone.style.touchAction = 'none';
     this.triggerZone.style.userSelect = 'none';
     this.triggerZone.style.webkitUserSelect = 'none';
+    this.triggerZone.style.display = this.isOpen ? 'block' : 'none';
     this.triggerZone.setAttribute('aria-label', 'ArrowPuck Launcher');
     this.triggerZone.title = 'Tıkla ve yayı geriye çekerek nişan al';
 
     this.mountTarget.appendChild(this.triggerZone);
+
+    // 3. Floating interactive prompt badge (attention-grabber on host site)
+    if (this.options.showPrompt) {
+      this.initPromptUI();
+    }
 
     // Resize handling with high-DPI / retina sharpness
     this.handleResize = this.handleResize.bind(this);
@@ -1619,7 +1727,8 @@ class ArrowShot {
       y: this.targetPos.y,
       height: 250,
       width: 26,
-      theme: this.options.theme
+      theme: this.options.theme,
+      initiallyDeployed: this.isOpen
     });
 
     this.particles = new ParticleSystem({
@@ -1629,6 +1738,214 @@ class ArrowShot {
     this.popups = new ScorePopup({
       theme: this.options.theme
     });
+  }
+
+  /**
+   * Initializes floating interactive trigger pill on host website.
+   */
+  initPromptUI() {
+    if (typeof document === 'undefined') return;
+
+    if (!document.getElementById('arrowshot-prompt-styles')) {
+      const style = document.createElement('style');
+      style.id = 'arrowshot-prompt-styles';
+      style.textContent = `
+        @keyframes arrowshot-breathe {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 14px rgba(245, 158, 11, 0.18);
+          }
+          50% {
+            transform: translateY(-2.5px) scale(1.025);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 22px rgba(245, 158, 11, 0.32);
+          }
+        }
+        @keyframes arrowshot-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(0.8); }
+        }
+        .arrowshot-prompt-btn {
+          position: fixed;
+          z-index: 100001;
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          background: rgba(18, 18, 22, 0.90);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(245, 158, 11, 0.32);
+          border-radius: 9999px;
+          padding: 10px 18px;
+          color: #f4f4f5;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+          font-size: 13.5px;
+          font-weight: 500;
+          line-height: 1;
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                      border-color 0.22s ease,
+                      background-color 0.22s ease,
+                      box-shadow 0.22s ease;
+          animation: arrowshot-breathe 3.2s infinite ease-in-out;
+        }
+        .arrowshot-prompt-btn:hover {
+          border-color: rgba(245, 158, 11, 0.7);
+          background: rgba(24, 24, 30, 0.96);
+          transform: translateY(-2px) scale(1.03);
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.38);
+        }
+        .arrowshot-prompt-btn:active {
+          transform: translateY(0) scale(0.97);
+        }
+        .arrowshot-prompt-btn.is-active {
+          animation: none;
+          background: rgba(24, 24, 28, 0.88);
+          border-color: rgba(255, 255, 255, 0.16);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          padding: 8px 14px;
+          font-size: 12.5px;
+          color: #a1a1aa;
+        }
+        .arrowshot-prompt-btn.is-active:hover {
+          border-color: rgba(239, 68, 68, 0.5);
+          color: #f4f4f5;
+          background: rgba(30, 24, 26, 0.94);
+        }
+        .arrowshot-prompt-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #f59e0b;
+          box-shadow: 0 0 8px #f59e0b;
+          display: inline-block;
+          animation: arrowshot-dot-pulse 2s infinite ease-in-out;
+        }
+        .arrowshot-prompt-tag {
+          font-size: 11px;
+          color: #fbbf24;
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.28);
+          padding: 3px 8px;
+          border-radius: 9999px;
+          letter-spacing: 0.02em;
+          font-weight: 600;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    this.promptBtn = document.createElement('button');
+    this.promptBtn.id = 'arrowshot-prompt';
+    this.promptBtn.className = 'arrowshot-prompt-btn' + (this.isOpen ? ' is-active' : '');
+
+    // Positioning
+    const pos = this.options.promptPosition;
+    if (typeof pos === 'object' && pos !== null) {
+      Object.assign(this.promptBtn.style, pos);
+    } else {
+      switch (pos) {
+        case 'bottom-left':
+          this.promptBtn.style.bottom = '24px';
+          this.promptBtn.style.left = '24px';
+          break;
+        case 'top-right':
+          this.promptBtn.style.top = '24px';
+          this.promptBtn.style.right = '24px';
+          break;
+        case 'top-left':
+          this.promptBtn.style.top = '24px';
+          this.promptBtn.style.left = '24px';
+          break;
+        case 'bottom-right':
+        default:
+          this.promptBtn.style.bottom = '24px';
+          this.promptBtn.style.right = '28px';
+          break;
+      }
+    }
+
+    this.updatePromptButtonUI();
+
+    this.promptBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    this.mountTarget.appendChild(this.promptBtn);
+  }
+
+  /**
+   * Updates prompt pill content according to open/closed state.
+   */
+  updatePromptButtonUI() {
+    if (!this.promptBtn) return;
+    if (this.isOpen) {
+      this.promptBtn.classList.add('is-active');
+      this.promptBtn.innerHTML = `
+        <span style="font-size: 12px; opacity: 0.75;">✕</span>
+        <span>${this.options.closeText}</span>
+      `;
+      this.promptBtn.setAttribute('aria-label', this.options.closeText);
+      this.promptBtn.title = 'Oyunu kapat';
+    } else {
+      this.promptBtn.classList.remove('is-active');
+      this.promptBtn.innerHTML = `
+        <span class="arrowshot-prompt-dot"></span>
+        <span>${this.options.promptText}</span>
+        <span class="arrowshot-prompt-tag">Ok At</span>
+      `;
+      this.promptBtn.setAttribute('aria-label', this.options.promptText);
+      this.promptBtn.title = 'Oyunu başlat';
+    }
+  }
+
+  /**
+   * Public API: Activates and opens the widget.
+   * Target plunges down from the ceiling with pendulum drop animation.
+   */
+  open() {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.openProgress = 0;
+    this.triggerZone.style.display = 'block';
+
+    this.updatePromptButtonUI();
+    this.target.startDrop();
+
+    this.options.onOpen?.();
+  }
+
+  /**
+   * Public API: Closes and retracts the widget.
+   * Target retracts back into the ceiling, bow fades away.
+   */
+  close() {
+    if (!this.isOpen) return;
+    this.isOpen = false;
+    this.triggerZone.style.display = 'none';
+
+    this.updatePromptButtonUI();
+    this.target.startRetract();
+
+    if (this.state === GameState.AIMING || this.state === GameState.FLYING) {
+      this.resetCycle();
+    }
+
+    this.options.onClose?.();
+  }
+
+  /**
+   * Public API: Toggles widget open/closed state.
+   */
+  toggle() {
+    if (this.isOpen) {
+      this.close();
+    } else {
+      this.open();
+    }
   }
 
   /**
@@ -1881,6 +2198,13 @@ class ArrowShot {
    * Per-frame updates.
    */
   update(dt) {
+    // Smooth transition tracking for bow and arrow entrance
+    if (this.isOpen && this.openProgress < 1) {
+      this.openProgress = Math.min(1, this.openProgress + dt / 0.45);
+    } else if (!this.isOpen && this.openProgress > 0) {
+      this.openProgress = Math.max(0, this.openProgress - dt / 0.35);
+    }
+
     this.bow.update(dt);
     this.target.update(dt);
     this.particles.update(dt);
@@ -1989,39 +2313,64 @@ class ArrowShot {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
-    const isAiming = this.state === GameState.AIMING;
+    // If completely closed and target is not in motion, skip rendering
+    if (!this.isOpen && this.openProgress <= 0 && !this.target.isDropping && !this.target.isRetracting) {
+      return;
+    }
 
-    // 1. Back layer of bow (bowstring and draw guide)
-    this.bow.renderBack(
-      ctx,
-      isAiming,
-      this.dragData.dragX,
-      this.dragData.dragY,
-      this.dragData.ratio
-    );
-
-    // 2. Trajectory prediction dots
-    this.renderTrajectory();
-
-    // 3. Target Board (Renders ceiling mount, suspension cord & swinging board)
+    // 1. Target Board (Renders ceiling mount, suspension cord & swinging board)
     this.target.render(ctx);
 
-    // 4. Arrow Projectile
-    this.projectile.render(ctx);
+    // 2. Bow & Arrow with smooth entrance fade and slide
+    const isAiming = this.state === GameState.AIMING;
+    const bowAlpha = MathUtils.clamp(this.openProgress, 0, 1);
+    const bowSlide = (1 - Math.sin(bowAlpha * Math.PI / 2)) * 48;
 
-    // 5. Front layer of bow (recurve limbs, riser grip, arrow shelf)
-    this.bow.renderFront(
-      ctx,
-      isAiming,
-      this.dragData.dragX,
-      this.dragData.dragY,
-      this.dragData.ratio
-    );
+    if (bowAlpha > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = bowAlpha;
+      ctx.translate(0, bowSlide);
 
-    // 6. FX Micro-Sparks
+      // Back layer of bow (bowstring and draw guide)
+      this.bow.renderBack(
+        ctx,
+        isAiming,
+        this.dragData.dragX,
+        this.dragData.dragY,
+        this.dragData.ratio
+      );
+
+      // Trajectory prediction dots
+      this.renderTrajectory();
+
+      // Front layer of bow (recurve limbs, riser grip, arrow shelf)
+      this.bow.renderFront(
+        ctx,
+        isAiming,
+        this.dragData.dragX,
+        this.dragData.dragY,
+        this.dragData.ratio
+      );
+
+      ctx.restore();
+    }
+
+    // 3. Arrow Projectile
+    // Rendered independently so stuck or flying arrows maintain exact coordinates
+    if (this.state === GameState.HIT || this.state === GameState.MISS || this.state === GameState.FLYING) {
+      this.projectile.render(ctx);
+    } else if (bowAlpha > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = bowAlpha;
+      ctx.translate(0, bowSlide);
+      this.projectile.render(ctx);
+      ctx.restore();
+    }
+
+    // 4. FX Micro-Sparks
     this.particles.render(ctx);
 
-    // 7. FX Score Popups
+    // 5. FX Score Popups
     this.popups.render(ctx);
   }
 
@@ -2057,6 +2406,7 @@ class ArrowShot {
     window.removeEventListener('resize', this.handleResize);
     this.canvas?.remove();
     this.triggerZone?.remove();
+    this.promptBtn?.remove();
     if (this.audioCtx) this.audioCtx.close();
   }
 }
