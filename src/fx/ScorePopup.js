@@ -22,13 +22,17 @@ export class ScorePopup {
    * @param {string} [tier='outer'] - Tier identifier ('bullseye', 'inner', 'outer')
    */
   spawn(x, y, score, tier = 'outer') {
+    let text = `+${score}`;
+    if (tier === 'bullseye') text = `BULLSEYE +${score}`;
+    else if (tier === 'master') text = `EXCELLENT +${score}`;
+
     this.popups.push({
       x,
       y: y - 10,
       startY: y - 10,
       score,
       tier,
-      text: tier === 'bullseye' ? `BULLSEYE +${score}` : `+${score}`,
+      text,
       time: 0,
       duration: 1.1
     });
@@ -80,8 +84,8 @@ export class ScorePopup {
       ctx.scale(scale, scale);
 
       // Subtle minimalist dark pill backing
-      const isBullseye = p.tier === 'bullseye';
-      ctx.font = isBullseye
+      const isHighTier = p.tier === 'bullseye' || p.tier === 'master';
+      ctx.font = isHighTier
         ? '600 12px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         : '600 13px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
@@ -93,7 +97,7 @@ export class ScorePopup {
 
       // Clean pill background
       ctx.fillStyle = 'rgba(24, 24, 27, 0.88)';
-      ctx.strokeStyle = isBullseye ? this.accentColor : 'rgba(255, 255, 255, 0.15)';
+      ctx.strokeStyle = isHighTier ? this.accentColor : 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
 
       ctx.beginPath();
@@ -102,7 +106,7 @@ export class ScorePopup {
       ctx.stroke();
 
       // Typography
-      ctx.fillStyle = isBullseye ? this.accentColor : '#ffffff';
+      ctx.fillStyle = isHighTier ? this.accentColor : '#ffffff';
       ctx.fillText(p.text, 0, 0.5);
 
       ctx.restore();

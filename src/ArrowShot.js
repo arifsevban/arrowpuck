@@ -33,9 +33,9 @@ export class ArrowShot {
       bowPosition: 'bottom-left',
       targetPosition: 'top-right',
       gravity: 0.38,
-      powerMultiplier: 0.36,
+      powerMultiplier: 0.38,
       maxDragRadius: 110,
-      airResistance: 0.998,
+      airResistance: 1.0,
       theme: {
         primaryColor: '#f59e0b',
         arrowColor: '#27272a',
@@ -191,15 +191,17 @@ export class ArrowShot {
           return { x: marginX, y: this.height - marginY };
       }
     } else {
-      const marginX = Math.max(60, Math.min(120, this.width * 0.10));
-      const marginY = Math.max(60, Math.min(110, this.height * 0.14));
+      // Side-profile target board mounted on the right screen border
+      const marginFromEdge = 34; // Board front face sits 34px from right border
+      const boardX = this.width - marginFromEdge;
+      const boardY = Math.max(130, Math.min(this.height * 0.36, this.height - 150));
 
       switch (posConfig) {
         case 'top-left':
-          return { x: marginX, y: marginY };
+          return { x: 34, y: boardY };
         case 'top-right':
         default:
-          return { x: this.width - marginX, y: marginY };
+          return { x: boardX, y: boardY };
       }
     }
   }
@@ -225,7 +227,8 @@ export class ArrowShot {
     this.target = new Target({
       x: this.targetPos.x,
       y: this.targetPos.y,
-      radius: 40,
+      height: 250,
+      width: 26,
       theme: this.options.theme
     });
 
@@ -348,18 +351,21 @@ export class ArrowShot {
     this.hits++;
     this.totalScore += hitResult.score;
 
-    // Stick arrow into target
-    this.projectile.stick(this.projectile.x, this.projectile.y, this.projectile.angle);
+    const impactX = hitResult.impactX ?? this.projectile.x;
+    const impactY = hitResult.impactY ?? this.projectile.y;
 
-    // Recoil shake on target
+    // Stick arrow into front face of target
+    this.projectile.stick(impactX, impactY, this.projectile.angle);
+
+    // Recoil shake on target board
     const impactSpeed = Math.hypot(this.projectile.vx, this.projectile.vy);
-    this.target.hit(this.projectile.angle, Math.max(10, impactSpeed * 0.8));
+    this.target.hit(impactY, Math.max(10, impactSpeed * 0.8));
 
-    // Emit minimalist micro-sparks
-    this.particles.emitSparks(this.projectile.x, this.projectile.y, this.projectile.angle, 24);
+    // Emit minimalist micro-sparks leftward from impact face
+    this.particles.emitSparks(impactX, impactY, this.projectile.angle, 24);
 
     // Spawn floating score pill
-    this.popups.spawn(this.target.x, this.target.y, hitResult.score, hitResult.tier);
+    this.popups.spawn(this.target.x - 36, impactY, hitResult.score, hitResult.tier);
 
     this.playSound('hit');
 
@@ -486,15 +492,18 @@ export class ArrowShot {
     this.popups.update(dt);
 
     if (this.state === GameState.FLYING) {
+      const prevX = this.projectile.x;
       this.projectile.update(this.options.gravity, this.options.airResistance, dt);
 
-      // Check collision with target
-      const hitResult = Collision.checkTargetHit(
+      // Check collision with side-profile vertical target board
+      const hitResult = Collision.checkBoardHit(
         this.projectile.x,
         this.projectile.y,
+        prevX,
         this.target.x + this.target.offsetX,
         this.target.y + this.target.offsetY,
-        this.target.radius
+        this.target.height,
+        this.target.width
       );
 
       if (hitResult.hit) {

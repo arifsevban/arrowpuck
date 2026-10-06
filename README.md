@@ -12,7 +12,7 @@ arrowpuck allows developers and designers to add an elegant archery bow interact
 - Non-intrusive by design: The full-screen canvas maintains `pointer-events: none` by default. Clicks, text selection, and scrolling pass through uninterrupted to the underlying website. Only the bow handle captures drag events.
 - Physical Euler integration: Realistic parabolic arrow flight calculated with gravity acceleration and aerodynamic drag.
 - Accurate trajectory preview: Real-time dotted parabolic trajectory forecast rendered dynamically while drawing the bow.
-- Concentric ring scoring: Target board evaluates hit distance into three scoring tiers (300 points for bullseye, 150 points for inner ring, 50 points for outer ring).
+- Side-profile target board scoring: Wall-mounted vertical archery board evaluates impact height into 5 graded challenge intervals (500 points for razor bullseye core, 300 points for inner master, 150 points for middle, 75 points for mid-outer, 25 points for outer edge).
 - Minimalist visual aesthetics: Clean industrial design with monochrome palettes, crisp vector-sharp geometry, high-DPI retina display scaling, damped harmonic target shake, and physical micro-sparks.
 - Dual distribution: Available as both an ES Module for modern bundlers and a minified UMD standalone bundle for instant CDN script-tag usage.
 

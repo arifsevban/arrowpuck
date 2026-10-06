@@ -77,6 +77,47 @@ assert(hitOuter.tier === 'outer', 'outer tier');
 
 // Complete miss (distance = 55 > 40)
 const miss = Collision.checkTargetHit(targetX + 55, targetY, targetX, targetY, targetRadius);
-assert(miss.hit === false, 'miss hit is false');
+console.log('\n--- Testing Side-Profile Board Collision & 5 Graded Intervals ---');
+const boardX = 1400;
+const boardY = 300;
+const boardH = 250; // from 175 to 425
+
+// 1. Razor Bullseye hit (within 8px of center Y = 300, e.g. Y = 305)
+const boardHitBullseye = Collision.checkBoardHit(boardX + 2, boardY + 5, boardX - 10, boardX, boardY, boardH);
+assert(boardHitBullseye.hit === true, 'board bullseye hit is true');
+assert(boardHitBullseye.score === 500, 'board bullseye score is 500');
+assert(boardHitBullseye.tier === 'bullseye', 'board bullseye tier');
+
+// 2. Inner Master zone hit (within 22px of center Y = 300, e.g. Y = 315)
+const boardHitMaster = Collision.checkBoardHit(boardX + 1, boardY + 15, boardX - 10, boardX, boardY, boardH);
+assert(boardHitMaster.hit === true, 'board master hit is true');
+assert(boardHitMaster.score === 300, 'board master score is 300');
+assert(boardHitMaster.tier === 'master', 'board master tier');
+
+// 3. Middle High zone hit (within 48px of center Y = 300, e.g. Y = 335)
+const boardHitInner = Collision.checkBoardHit(boardX + 1, boardY + 35, boardX - 10, boardX, boardY, boardH);
+assert(boardHitInner.hit === true, 'board inner hit is true');
+assert(boardHitInner.score === 150, 'board inner score is 150');
+assert(boardHitInner.tier === 'inner', 'board inner tier');
+
+// 4. Mid-Outer zone hit (within 84px of center Y = 300, e.g. Y = 360)
+const boardHitMid = Collision.checkBoardHit(boardX + 1, boardY + 60, boardX - 10, boardX, boardY, boardH);
+assert(boardHitMid.hit === true, 'board mid hit is true');
+assert(boardHitMid.score === 75, 'board mid score is 75');
+assert(boardHitMid.tier === 'mid', 'board mid tier');
+
+// 5. Outer Edge zone hit (near edges, e.g. Y = 400, distance = 100 <= 125)
+const boardHitOuter = Collision.checkBoardHit(boardX + 1, boardY + 100, boardX - 10, boardX, boardY, boardH);
+assert(boardHitOuter.hit === true, 'board outer hit is true');
+assert(boardHitOuter.score === 25, 'board outer score is 25');
+assert(boardHitOuter.tier === 'outer', 'board outer tier');
+
+// 6. Vertical miss above board (Y = 150 < 175)
+const boardMissHigh = Collision.checkBoardHit(boardX + 5, 150, boardX - 10, boardX, boardY, boardH);
+assert(boardMissHigh.hit === false, 'board high miss is false');
+
+// 7. Horizontal not reached yet (arrowX = 1350 < boardX = 1400)
+const boardMissShort = Collision.checkBoardHit(1350, boardY, 1300, boardX, boardY, boardH);
+assert(boardMissShort.hit === false, 'board short miss is false');
 
 console.log('\n🎉 ALL PHYSICS & COLLISION VERIFICATIONS PASSED 100%!');
