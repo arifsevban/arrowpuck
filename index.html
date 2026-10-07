@@ -294,26 +294,6 @@
       font-size: 0.82rem;
     }
 
-    /* Discreet Hint */
-    .easter-egg-hint {
-      position: fixed;
-      left: 110px;
-      bottom: 74px;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      background: rgba(17, 17, 20, 0.8);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.75rem;
-      border-radius: 9999px;
-      pointer-events: none;
-      transition: opacity 0.5s ease;
-    }
-
     /* Feedback Toast */
     #page-toast {
       position: fixed;
@@ -336,7 +316,6 @@
       main { padding: 3.5rem 1.5rem 8rem; }
       h1 { font-size: 2.15rem; }
       footer { padding: 2rem 1.5rem; flex-direction: column; gap: 1rem; }
-      .easter-egg-hint { display: none; }
     }
   </style>
 </head>
@@ -430,11 +409,6 @@
     <div>MIT Licensed. Clean, zero-dependency engineering.</div>
   </footer>
 
-  <!-- Subtle Easter Egg Indicator (visible once opened) -->
-  <div class="easter-egg-hint" id="hint" style="display: none; opacity: 0;">
-    <span>← Pull bowstring to aim &amp; release</span>
-  </div>
-
   <div id="page-toast"></div>
 
   <!-- ArrowPuck Standalone Bundle (CDN Simulation) -->
@@ -452,36 +426,8 @@
       autoOpen: false,
       promptText: 'Bored? 🎯',
       closeText: '✕ Close',
-      promptPosition: 'bottom-right',
-      onOpen: () => {
-        const hint = document.getElementById('hint');
-        if (hint) {
-          hint.style.display = 'flex';
-          setTimeout(() => hint.style.opacity = '1', 100);
-        }
-      },
-      onClose: () => {
-        const hint = document.getElementById('hint');
-        if (hint) {
-          hint.style.opacity = '0';
-          setTimeout(() => hint.style.display = 'none', 400);
-        }
-      },
-      onHit: (score, total) => {
-        dismissHint();
-      },
-      onMiss: () => {
-        dismissHint();
-      }
+      promptPosition: 'bottom-right'
     });
-
-    function dismissHint() {
-      const hint = document.getElementById('hint');
-      if (hint) {
-        hint.style.opacity = '0';
-        setTimeout(() => hint.style.display = 'none', 500);
-      }
-    }
 
     function showFeedback(text) {
       const toast = document.getElementById('page-toast');

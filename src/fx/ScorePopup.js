@@ -23,7 +23,7 @@ export class ScorePopup {
    */
   spawn(x, y, score, tier = 'outer') {
     let text = `+${score}`;
-    if (tier === 'bullseye') text = `🎯 BULLSEYE +${score}`;
+    if (tier === 'bullseye') text = `BULLSEYE +${score}`;
     else if (tier === 'master') text = `EXCELLENT +${score}`;
 
     const isBullseye = tier === 'bullseye';
