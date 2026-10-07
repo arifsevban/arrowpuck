@@ -1717,6 +1717,7 @@ class ArrowShot {
       promptText: 'Bored? 🎯',
       closeText: '✕ Close',
       promptPosition: 'bottom-right',
+      zIndex: 9999,
       theme: {
         primaryColor: '#f59e0b',
         arrowColor: '#27272a',
@@ -1785,6 +1786,8 @@ class ArrowShot {
   initDOM() {
     this.mountTarget = this.options.mountTarget || document.body;
 
+    const baseZIndex = typeof this.options.zIndex === 'number' ? this.options.zIndex : 9999;
+
     // 1. Full-screen fixed canvas
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'arrowshot-canvas';
@@ -1793,7 +1796,7 @@ class ArrowShot {
     this.canvas.style.left = '0';
     this.canvas.style.width = '100vw';
     this.canvas.style.height = '100vh';
-    this.canvas.style.zIndex = '99999';
+    this.canvas.style.zIndex = String(baseZIndex);
     this.canvas.style.pointerEvents = 'none'; // Critical: strictly non-intrusive!
     this.canvas.style.userSelect = 'none';
     this.canvas.style.webkitUserSelect = 'none';
@@ -1810,7 +1813,7 @@ class ArrowShot {
     this.triggerZone.style.borderRadius = '50%';
     this.triggerZone.style.pointerEvents = 'auto';
     this.triggerZone.style.cursor = 'grab';
-    this.triggerZone.style.zIndex = '100000';
+    this.triggerZone.style.zIndex = String(baseZIndex + 1);
     this.triggerZone.style.touchAction = 'none';
     this.triggerZone.style.userSelect = 'none';
     this.triggerZone.style.webkitUserSelect = 'none';
@@ -2021,6 +2024,8 @@ class ArrowShot {
     this.promptBtn = document.createElement('button');
     this.promptBtn.id = 'arrowshot-prompt';
     this.promptBtn.className = 'arrowshot-prompt-link' + (this.isOpen ? ' is-active' : '');
+    const baseZIndex = typeof this.options.zIndex === 'number' ? this.options.zIndex : 9999;
+    this.promptBtn.style.zIndex = String(baseZIndex + 2);
 
     // Positioning
     const pos = this.options.promptPosition;

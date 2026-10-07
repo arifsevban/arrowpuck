@@ -105,6 +105,7 @@ Pass options to `new ArrowPuck(options)`:
 | `promptText` | string | `'Bored?'` | Text displayed in the floating prompt link before opening. |
 | `closeText` | string | `'✕ Close'` | Text displayed to close or retract the target while active. |
 | `promptPosition` | string \| object | `'bottom-right'` | Position of prompt (`'bottom-right'`, `'bottom-left'`, or custom `{ bottom, right }`). |
+| `zIndex` | number | `9999` | Base stacking order for canvas and controls to prevent layer conflicts. |
 | `bowPosition` | string \| object | `'bottom-left'` | Launcher position (`'bottom-left'`, `'bottom-right'`, or `{ x, y }`). |
 | `targetPosition` | string \| object | `'top-right'` | Target position (`'top-right'`, `'top-left'`, or `{ x, y }`). |
 | `theme` | object | `{ primaryColor: '#f59e0b' }` | Accent color token for bullseye, notch, sparks, and glow. |

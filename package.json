@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/arrowpuck.min.js",
   "module": "dist/arrowpuck.esm.js",
+  "types": "dist/index.d.ts",
   "unpkg": "dist/arrowpuck.min.js",
   "jsdelivr": "dist/arrowpuck.min.js",
   "files": [
@@ -12,6 +13,7 @@
   ],
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/arrowpuck.esm.js",
       "require": "./dist/arrowpuck.min.js",
       "default": "./dist/arrowpuck.min.js"
@@ -19,7 +21,8 @@
   },
   "scripts": {
     "build": "rollup -c",
-    "dev": "node serve.js",
+    "dev": "node demo/serve.js",
+    "start": "node demo/serve.js",
     "test": "node tests/test_physics_collision.js"
   },
   "keywords": [

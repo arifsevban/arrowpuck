@@ -1,0 +1,10 @@
+# NPM Ignore configuration
+node_modules/
+demo/
+docs/
+tests/
+assets/
+src/
+rollup.config.js
+.gitignore
+.git
