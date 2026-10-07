@@ -1,37 +1,31 @@
 # arrowpuck
 
-A lightweight, non-intrusive interactive Easter egg micro-widget built with pure Vanilla JavaScript (ES6+) and HTML5 Canvas.
+A zero-dependency, non-intrusive interactive archery Easter egg for modern websites.
 
-arrowpuck allows developers and designers to add an elegant archery bow interaction to any webpage (portfolios, agency websites, blogs, 404 pages) without obstructing page interactions, clicking, text selection, or scrolling.
+Add a micro-interaction to your portfolio, blog, or 404 page without breaking clicks, scrolling, or page layout.
 
----
+<p align="center">
+  <img src="./assets/demo.gif" alt="arrowpuck demo preview" width="720" />
+</p>
 
-## Features
-
-- Zero external dependencies: Built with native HTML5 2D Canvas and ES6+. No physics engines or bulky libraries.
-- Non-intrusive by design: The full-screen canvas maintains `pointer-events: none` by default. Clicks, text selection, and scrolling pass through uninterrupted to the underlying website. Only the bow handle captures drag events.
-- Physical Euler integration: Realistic parabolic arrow flight calculated with gravity acceleration and aerodynamic drag.
-- Accurate trajectory preview: Real-time dotted parabolic trajectory forecast rendered dynamically while drawing the bow.
-- Suspended target board scoring: Ceiling-suspended vertical archery board evaluates impact height into 5 graded challenge intervals (500 points for razor bullseye core, 300 points for inner master, 150 points for middle, 75 points for mid-outer, 25 points for outer edge) and sways realistically with pendulum physics based on arrow velocity and hit height.
-- Interactive trigger prompt: Elegant floating prompt button catches visitor attention on host websites and drops the target board dynamically from the ceiling upon activation.
-- Minimalist visual aesthetics: Clean industrial design with monochrome palettes, crisp vector-sharp geometry, high-DPI retina display scaling, damped harmonic target shake, and physical micro-sparks.
-- Dual distribution: Available as both an ES Module for modern bundlers and a minified UMD standalone bundle for instant CDN script-tag usage.
+- Zero external dependencies: Pure native HTML5 Canvas and ES6+ (<15KB).
+- Non-intrusive: Clicks, scrolling, and text selection pass through uninterrupted.
+- Physics-driven: Parabolic arrow flight and dynamic pendulum target swing.
+- Ambient prompt: Starts as an elegant text link (*Bored?*) and drops the ceiling target on demand.
+- Modern frameworks: Easy integration with Vanilla HTML, React, Next.js, and Vue.
 
 ---
 
-## Quick Start (CDN)
+## 1. Quick Start (HTML / CDN)
 
-Add the standalone minified script to any HTML document before the closing `</body>` tag:
+Ideal for Webflow, WordPress, Shopify, or static websites. Paste before `</body>`:
 
 ```html
-<!-- Load arrowpuck from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/arrowpuck/dist/arrowpuck.min.js"></script>
-
 <script>
-  // Initialize widget
   const widget = new ArrowPuck({
-    bowPosition: 'bottom-left',
-    targetPosition: 'top-right'
+    promptText: 'Bored?',
+    onHit: (score) => console.log('Scored:', score)
   });
 </script>
 ```
@@ -44,7 +38,7 @@ Alternatively, UNPKG can be used:
 
 ---
 
-## Installation (NPM)
+## 2. Installation (NPM / Modern Frameworks)
 
 Install the package via npm:
 
@@ -52,117 +46,107 @@ Install the package via npm:
 npm install arrowpuck
 ```
 
-Import and initialize in your application:
+### React / Next.js
 
-```javascript
+```jsx
+import { useEffect } from 'react';
 import { ArrowPuck } from 'arrowpuck';
 
-const widget = new ArrowPuck({
-  bowPosition: 'bottom-left',
-  targetPosition: 'top-right',
-  autoOpen: false,
-  promptText: 'Bored?',
-  onHit: (score, totalScore) => {
-    console.log(`Hit! Score: ${score}, Total: ${totalScore}`);
-  }
-});
-```
+export default function ArcheryWidget() {
+  useEffect(() => {
+    const widget = new ArrowPuck({
+      promptText: 'Bored?'
+    });
 
----
+    return () => {
+      widget.destroy(); // Prevents memory leaks on route changes
+    };
+  }, []);
 
-## Configuration Options
-
-Pass a configuration object to `new ArrowPuck(options)`:
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `mountTarget` | HTMLElement | `document.body` | DOM container element where the fixed canvas is appended. |
-| `autoOpen` | boolean | `false` | When false, widget remains parked until visitor clicks the floating prompt text. |
-| `showPrompt` | boolean | `true` | Renders a subtle floating typographic prompt text on the page. |
-| `promptText` | string | `'Bored?'` | Text displayed inside the floating prompt link before opening. |
-| `closeText` | string | `'✕ Close'` | Text displayed inside the toggle link while active to close or minimize. |
-| `promptPosition` | string \| object | `'bottom-right'` | Position of prompt button (`'bottom-right'`, `'bottom-left'`, `'top-right'`, `'top-left'`, or object `{ bottom, right }`). |
-| `bowPosition` | string \| object | `'bottom-left'` | Launcher placement. Accepts `'bottom-left'`, `'bottom-right'`, or `{ x, y }`. |
-| `targetPosition` | string \| object | `'top-right'` | Target placement. Accepts `'top-right'`, `'top-left'`, or `{ x, y }`. |
-| `gravity` | number | `0.38` | Vertical gravitational acceleration in pixels per frame squared. |
-| `powerMultiplier` | number | `0.38` | Velocity scale factor applied to the clamped pull displacement vector. |
-| `maxDragRadius` | number | `110` | Maximum pull radius in pixels. Pull distance beyond this is clamped. |
-| `airResistance` | number | `1.0` | Air resistance drag multiplier applied each frame. |
-| `theme` | object | `{ ... }` | Color tokens for customization (see Theme Object below). |
-| `enableTrajectory` | boolean | `true` | Enables dotted trajectory forecast line during aiming. |
-| `enableSound` | boolean | `false` | Enables Web Audio API synthesized mechanical and impact sound effects. |
-| `onOpen` | function | `() => {}` | Callback invoked when the widget opens and target drops. |
-| `onClose` | function | `() => {}` | Callback invoked when the widget closes and target retracts. |
-| `onHit` | function | `(score, total) => {}` | Callback invoked upon successful collision with the target. |
-| `onMiss` | function | `() => {}` | Callback invoked when the arrow hits the floor or exits screen bounds. |
-
-### Theme Object
-
-```javascript
-theme: {
-  primaryColor: '#f59e0b',     // Accent color used for bullseye, arrowhead, and sparks
-  arrowColor: '#27272a',       // Carbon arrow shaft color
-  targetRingColors: [          // Colors for target concentric rings
-    '#18181b',
-    '#27272a',
-    '#f59e0b'
-  ]
+  return null;
 }
 ```
 
+### Vue 3
+
+```vue
+<script setup>
+import { onMounted, onUnmounted } from 'vue';
+import { ArrowPuck } from 'arrowpuck';
+
+let widget = null;
+
+onMounted(() => {
+  widget = new ArrowPuck({
+    promptText: 'Bored?'
+  });
+});
+
+onUnmounted(() => {
+  widget?.destroy();
+});
+</script>
+
+<template>
+  <!-- Mounts automatically to document.body -->
+</template>
+```
+
 ---
 
-## API Methods
+## 3. Configuration Options
 
-Instances of `ArrowPuck` expose the following methods:
+Pass options to `new ArrowPuck(options)`:
 
-- `widget.open()`: Activates the widget, dropping the suspended target from the ceiling with spring-pendulum physics.
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `autoOpen` | boolean | `false` | When false, remains parked until visitor clicks the prompt. |
+| `showPrompt` | boolean | `true` | Displays a subtle floating prompt link on the page. |
+| `promptText` | string | `'Bored?'` | Text displayed in the floating prompt link before opening. |
+| `closeText` | string | `'✕ Close'` | Text displayed to close or retract the target while active. |
+| `promptPosition` | string \| object | `'bottom-right'` | Position of prompt (`'bottom-right'`, `'bottom-left'`, or custom `{ bottom, right }`). |
+| `bowPosition` | string \| object | `'bottom-left'` | Launcher position (`'bottom-left'`, `'bottom-right'`, or `{ x, y }`). |
+| `targetPosition` | string \| object | `'top-right'` | Target position (`'top-right'`, `'top-left'`, or `{ x, y }`). |
+| `theme` | object | `{ primaryColor: '#f59e0b' }` | Accent color token for bullseye, notch, sparks, and glow. |
+| `enableSound` | boolean | `false` | Enables Web Audio API synthesized mechanical sounds and chimes. |
+| `onHit` | function | `(score, total) => {}` | Callback invoked upon successful collision with the target. |
+| `onMiss` | function | `() => {}` | Callback invoked when arrow hits the floor or exits screen bounds. |
+
+---
+
+## 4. API Methods
+
+Instances of `ArrowPuck` expose lifecycle and control methods:
+
+- `widget.open()`: Drops the suspended target from the ceiling with pendulum drop animation.
 - `widget.close()`: Retracts the target board back into the ceiling and hides the bow.
-- `widget.toggle()`: Toggles the widget between open and closed states.
-- `widget.getStats()`: Returns an object containing `{ score, shots, hits, accuracy }`.
-- `widget.reset()`: Resets score, shot counters, active particles, and places the projectile in ready state.
-- `widget.destroy()`: Cancels animation frames, removes DOM elements (canvas, trigger handle, prompt button), and closes audio contexts.
+- `widget.toggle()`: Toggles between open and closed states.
+- `widget.getStats()`: Returns `{ score, shots, hits, accuracy }`.
+- `widget.reset()`: Resets score, shot counters, active sparks, and readies arrow.
+- `widget.destroy()`: Cancels animation frames, removes all DOM nodes, and cleans up event listeners.
 
 ---
 
-## Development and Testing
-
-Clone the repository and install developer dependencies:
+## 5. Development
 
 ```bash
+# Clone and install dependencies
 git clone https://github.com/arifsevban/arrowpuck.git
 cd arrowpuck
 npm install
-```
 
-### Run Local Development Server
-
-```bash
+# Start local demo server
 npm run dev
-```
 
-Starts the local test server at `http://localhost:3000`.
-
-### Run Test Suite
-
-```bash
+# Run test suite
 npm test
-```
 
-Executes the automated unit and integration tests verifying vector clamping, velocity scaling, Euler flight integration, trajectory sampling, and collision tier scoring.
-
-### Build Production Bundles
-
-```bash
+# Build production bundles
 npm run build
 ```
-
-Compiles the library into `dist/`:
-- `dist/arrowpuck.min.js`: Minified UMD bundle with sourcemap.
-- `dist/arrowpuck.esm.js`: ES Module bundle with sourcemap.
 
 ---
 
 ## License
 
-MIT License. Created by Arif S.
+[MIT License](LICENSE). Created by Arif S.
